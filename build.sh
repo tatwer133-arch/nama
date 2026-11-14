@@ -58,7 +58,7 @@ shutil.copytree(source, public)
 
 # Apply reviewed source fixes without modifying the immutable, checksum-verified upload.
 overrides = Path("site-overrides")
-allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js", "avatar-realistic.webp.b64", "avatar-hoodie.webp.b64", "avatar-jacket.webp.b64"}
+allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js", "avatar-runtime.js", "avatar-realistic.webp.b64", "avatar-hoodie.webp.b64", "avatar-jacket.webp.b64"}
 if overrides.exists():
     for candidate in sorted(overrides.rglob("*")):
         if candidate.is_dir():
