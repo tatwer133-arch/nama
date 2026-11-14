@@ -109,7 +109,7 @@ for value in collector.ids:
 if duplicates:
     raise SystemExit(f"Duplicate HTML IDs: {sorted(duplicates)}")
 
-scripts = re.findall(r"<script(?:\\s[^>]*)?>(.*?)</script>", html, re.S | re.I)
+scripts = re.findall(r"<script(?:\s[^>]*)?>(.*?)</script>", html, re.S | re.I)
 if len(scripts) != 1:
     raise SystemExit(f"Expected one inline application script, found {len(scripts)}")
 if shutil.which("node"):
