@@ -127,6 +127,13 @@ overrides_dir = Path(__file__).parent
 studio_html = (overrides_dir / "studio.html").read_text(encoding="utf-8")
 studio_css = (overrides_dir / "studio.css").read_text(encoding="utf-8")
 studio_js = (overrides_dir / "studio.js").read_text(encoding="utf-8")
+avatar_runtime = (overrides_dir / "avatar-runtime.js").read_text(encoding="utf-8")
+avatar_function_marker = "  function avatarMarkup(targetId='avatarFigure') {" + chr(10) + "    const p=state.profile||defaults.profile;"
+html = replace_once(html, avatar_function_marker, avatar_runtime + chr(10) + avatar_function_marker, "shared realistic avatar runtime")
+html = replace_once(html, avatar_function_marker, avatar_function_marker + chr(10) + "    return namaRealisticAvatarMarkup(p,targetId);", "use realistic avatar by default")
+draw_avatar_old = "  function drawAvatarInto(id){ const el=$(id); if(el) el.innerHTML=avatarMarkup(id); }"
+draw_avatar_new = "  function drawAvatarInto(id){ const el=$(id); if(el){ const p=state.profile||defaults.profile; el.innerHTML=id==='studioAvatarFigure'?namaRealisticAvatarLayers(p,id):avatarMarkup(id); } }"
+html = replace_once(html, draw_avatar_old, draw_avatar_new, "render realistic avatar in editor")
 
 html = replace_once(
     html,
