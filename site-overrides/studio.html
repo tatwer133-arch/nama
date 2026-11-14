@@ -1,0 +1,181 @@
+    <section id="avatarPage" class="page avatar-studio-page" aria-label="تخصيص الأفاتار">
+      <header class="studio-header">
+        <div class="studio-brand">
+          <div class="studio-brand-mark" aria-hidden="true">🌱</div>
+          <div class="studio-brand-copy"><strong>نَما</strong><small>كل يوم خطوة أحسن</small></div>
+        </div>
+        <div class="studio-header-actions">
+          <div class="studio-ready-badge"><span>تخصيص شخصيتك</span><span class="studio-ready-check" aria-hidden="true">✓</span></div>
+          <button class="studio-back" id="studioBackBtn" type="button">رجوع ←</button>
+        </div>
+      </header>
+      <div class="studio-layout">
+        <aside class="studio-sidebar">
+          <div class="studio-sidebar-title">تخصيص الأفاتار</div>
+          <nav class="studio-nav" aria-label="أقسام تخصيص الأفاتار">
+            <button type="button" class="selected" data-studio-tab="photo"><span class="studio-nav-icon">◉</span><span>صورتك</span></button>
+            <button type="button" data-studio-tab="hair"><span class="studio-nav-icon">♟</span><span>الشعر</span></button>
+            <button type="button" data-studio-tab="beard"><span class="studio-nav-icon">◒</span><span>اللحية</span></button>
+            <button type="button" data-studio-tab="glasses"><span class="studio-nav-icon">⌕</span><span>النظارة</span></button>
+            <button type="button" data-studio-tab="clothes"><span class="studio-nav-icon">♧</span><span>الملابس</span></button>
+            <button type="button" data-studio-tab="colors"><span class="studio-nav-icon">◉</span><span>الألوان</span></button>
+            <button type="button" data-studio-tab="body"><span class="studio-nav-icon">♙</span><span>القوام</span></button>
+          </nav>
+          <div class="studio-side-measures">
+            <strong>مقاساتك</strong>
+            <div class="studio-measure-row">
+              <div class="studio-measure-field"><label for="studioHeight">الطول · سم</label><input id="studioHeight" type="number" min="120" max="230" inputmode="numeric" /></div>
+              <div class="studio-measure-field"><label for="studioWeight">الوزن · كجم</label><input id="studioWeight" type="number" min="25" max="300" inputmode="numeric" /></div>
+            </div>
+          </div>
+          <button class="studio-reset" id="studioResetBtn" type="button">⟳ إعادة تعيين الشكل</button>
+        </aside>
+
+        <section class="studio-center" aria-label="معاينة الأفاتار">
+          <div class="studio-stage-heading"><strong>أفاتارك في نَما</strong><span>معاينة مباشرة لكل تعديل</span></div>
+          <div class="studio-stage-floor" aria-hidden="true"></div>
+          <svg class="studio-full-avatar" id="studioAvatar" viewBox="0 0 220 300" role="img" aria-label="معاينة شخصية نَما"><g id="studioAvatarFigure"></g></svg>
+          <div class="studio-avatar-caption" id="studioAvatarCaption">شخصيتك بتتغير مع كل اختيار</div>
+        </section>
+
+        <aside class="studio-options" id="studioOptions" aria-label="اختيارات الشخصية">
+          <div class="studio-options-head"><strong>اختيارات شخصيتك</strong><small>اختار وعدّل وشوف التغيير فورًا</small></div>
+
+          <section class="studio-card" id="studioPanelPhoto">
+            <div class="studio-card-title"><strong>إضافة صورتك</strong><small>اختياري</small></div>
+            <div class="studio-upload-row">
+              <div class="studio-photo-thumb" id="studioPhotoThumb" aria-label="معاينة صورتك">＋</div>
+              <div class="studio-upload-actions">
+                <label class="studio-upload-label" for="studioAvatarPhotoInput">＋ أضف أو اختر صورة</label>
+                <input type="file" id="studioAvatarPhotoInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden />
+                <button class="studio-upload-remove" id="studioRemovePhotoBtn" type="button">إزالة الصورة</button>
+              </div>
+            </div>
+            <p class="studio-help">الصورة بتفضل محفوظة على جهازك. اختار صورة واضحة للوجه عشان المعاينة تطلع أفضل.</p>
+            <div class="studio-subtitle">الشعر فوق الصورة</div>
+            <div class="studio-segment-row">
+              <button class="studio-segment selected" type="button" data-studio-field="photoHairOverlay" data-value="false">بدون إضافة</button>
+              <button class="studio-segment" type="button" data-studio-field="photoHairOverlay" data-value="true">إضافة شعر مرسوم</button>
+            </div>
+            <div class="studio-subtitle">ضبط مكان الوجه</div>
+            <div class="studio-range"><label for="studioFaceZoom">تكبير الوجه</label><input id="studioFaceZoom" type="range" min="1" max="2" step=".05"><output id="studioFaceZoomValue">1.45×</output></div>
+            <div class="studio-range"><label for="studioFaceX">يمين / شمال</label><input id="studioFaceX" type="range" min="-28" max="28" step="1"><output id="studioFaceXValue">0</output></div>
+            <div class="studio-range"><label for="studioFaceY">فوق / تحت</label><input id="studioFaceY" type="range" min="-28" max="28" step="1"><output id="studioFaceYValue">-7</output></div>
+            <p class="studio-help">لو رفعت صورة، الشعر واللحية والنظارة إضافات فوق الصورة؛ مش بتمسح التفاصيل الموجودة أصلًا فيها.</p>
+          </section>
+
+          <section class="studio-card" id="studioPanelHair">
+            <div class="studio-card-title"><strong>شكل الشعر</strong><small>اختار القَصّة المناسبة</small></div>
+            <div class="studio-choice-grid">
+              <button class="studio-option" type="button" data-studio-field="hairStyle" data-value="bald"><span class="studio-option-visual">👨‍🦲</span><b>أقرع</b></button>
+              <button class="studio-option" type="button" data-studio-field="hairStyle" data-value="buzz"><span class="studio-option-visual">🧑🏻‍🦱</span><b>محلوق قصير</b></button>
+              <button class="studio-option selected" type="button" data-studio-field="hairStyle" data-value="short"><span class="studio-option-visual">💇🏻</span><b>قصير</b></button>
+              <button class="studio-option" type="button" data-studio-field="hairStyle" data-value="medium"><span class="studio-option-visual">🧑🏻</span><b>متوسط</b></button>
+              <button class="studio-option" type="button" data-studio-field="hairStyle" data-value="curly"><span class="studio-option-visual">🦱</span><b>كيرلي</b></button>
+              <button class="studio-option" type="button" data-studio-field="hairStyle" data-value="wavy"><span class="studio-option-visual">〰️</span><b>متموج</b></button>
+              <button class="studio-option" type="button" data-studio-field="hairStyle" data-value="long"><span class="studio-option-visual">💁🏻</span><b>طويل</b></button>
+            </div>
+            <div class="studio-subtitle">لون الشعر</div>
+            <div class="studio-color-row">
+              <button class="studio-color selected" type="button" data-studio-field="hairColor" data-value="#302832" style="background:#302832" aria-label="أسود"></button>
+              <button class="studio-color" type="button" data-studio-field="hairColor" data-value="#594033" style="background:#594033" aria-label="بني غامق"></button>
+              <button class="studio-color" type="button" data-studio-field="hairColor" data-value="#8a6040" style="background:#8a6040" aria-label="بني فاتح"></button>
+              <button class="studio-color" type="button" data-studio-field="hairColor" data-value="#c4a36b" style="background:#c4a36b" aria-label="أشقر"></button>
+              <button class="studio-color" type="button" data-studio-field="hairColor" data-value="#b7b4b8" style="background:#b7b4b8" aria-label="رمادي"></button>
+              <button class="studio-color" type="button" data-studio-field="hairColor" data-value="#9d5467" style="background:#9d5467" aria-label="نبيتي"></button>
+            </div>
+          </section>
+
+          <section class="studio-card" id="studioPanelBeard">
+            <div class="studio-card-title"><strong>اللحية والشارب</strong><small>شكل الوجه</small></div>
+            <div class="studio-choice-grid">
+              <button class="studio-option selected" type="button" data-studio-field="facialHair" data-value="none"><span class="studio-option-visual">🙂</span><b>بدون</b></button>
+              <button class="studio-option" type="button" data-studio-field="facialHair" data-value="stubble"><span class="studio-option-visual">🧔🏻‍♂️</span><b>دقن خفيفة</b></button>
+              <button class="studio-option" type="button" data-studio-field="facialHair" data-value="beard"><span class="studio-option-visual">🧔</span><b>لحية كاملة</b></button>
+              <button class="studio-option" type="button" data-studio-field="facialHair" data-value="moustache"><span class="studio-option-visual">👨🏻</span><b>شنب</b></button>
+            </div>
+          </section>
+
+          <section class="studio-card" id="studioPanelGlasses">
+            <div class="studio-card-title"><strong>النظارة</strong><small>اختياري</small></div>
+            <div class="studio-choice-grid compact">
+              <button class="studio-option selected" type="button" data-studio-field="glasses" data-value="none"><span class="studio-option-visual">◯</span><b>بدون</b></button>
+              <button class="studio-option" type="button" data-studio-field="glasses" data-value="round"><span class="studio-option-visual">👓</span><b>دائرية</b></button>
+              <button class="studio-option" type="button" data-studio-field="glasses" data-value="square"><span class="studio-option-visual">🕶️</span><b>مربعة</b></button>
+            </div>
+          </section>
+
+          <section class="studio-card" id="studioPanelClothes">
+            <div class="studio-card-title"><strong>الملابس</strong><small>غيّر الستايل واللون</small></div>
+            <div class="studio-choice-grid compact">
+              <button class="studio-option selected" type="button" data-studio-field="outfitStyle" data-value="tshirt"><span class="studio-option-visual">👕</span><b>تيشيرت</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="hoodie"><span class="studio-option-visual">🧥</span><b>هودي</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="jacket"><span class="studio-option-visual">🧥</span><b>جاكيت</b></button>
+            </div>
+            <div class="studio-subtitle">لون الملابس</div>
+            <div class="studio-color-row">
+              <button class="studio-color selected" type="button" data-studio-field="outfitColor" data-value="#7568c8" style="background:#7568c8" aria-label="بنفسجي"></button>
+              <button class="studio-color" type="button" data-studio-field="outfitColor" data-value="#319b79" style="background:#319b79" aria-label="أخضر"></button>
+              <button class="studio-color" type="button" data-studio-field="outfitColor" data-value="#4389c7" style="background:#4389c7" aria-label="أزرق"></button>
+              <button class="studio-color" type="button" data-studio-field="outfitColor" data-value="#d77d61" style="background:#d77d61" aria-label="برتقالي"></button>
+              <button class="studio-color" type="button" data-studio-field="outfitColor" data-value="#424454" style="background:#424454" aria-label="كحلي"></button>
+              <button class="studio-color" type="button" data-studio-field="outfitColor" data-value="#e0c2a0" style="background:#e0c2a0" aria-label="بيج"></button>
+            </div>
+          </section>
+
+          <section class="studio-card" id="studioPanelColors">
+            <div class="studio-card-title"><strong>الألوان</strong><small>اختار درجاتك</small></div>
+            <div class="studio-subtitle">لون البشرة</div>
+            <div class="studio-color-row">
+              <button class="studio-color" type="button" data-studio-field="skinTone" data-value="#f7d9bd" style="background:#f7d9bd" aria-label="فاتحة جدًا"></button>
+              <button class="studio-color" type="button" data-studio-field="skinTone" data-value="#efc39c" style="background:#efc39c" aria-label="فاتحة"></button>
+              <button class="studio-color" type="button" data-studio-field="skinTone" data-value="#dca77e" style="background:#dca77e" aria-label="قمحية"></button>
+              <button class="studio-color selected" type="button" data-studio-field="skinTone" data-value="#b97955" style="background:#b97955" aria-label="متوسطة"></button>
+              <button class="studio-color" type="button" data-studio-field="skinTone" data-value="#965c43" style="background:#965c43" aria-label="بنية"></button>
+              <button class="studio-color" type="button" data-studio-field="skinTone" data-value="#633c2e" style="background:#633c2e" aria-label="داكنة"></button>
+            </div>
+            <div class="studio-subtitle">لون العين</div>
+            <div class="studio-color-row">
+              <button class="studio-color selected" type="button" data-studio-field="eyeColor" data-value="#38291f" style="background:#38291f" aria-label="بني"></button>
+              <button class="studio-color" type="button" data-studio-field="eyeColor" data-value="#7a5634" style="background:#7a5634" aria-label="عسلي"></button>
+              <button class="studio-color" type="button" data-studio-field="eyeColor" data-value="#4e8292" style="background:#4e8292" aria-label="أزرق"></button>
+              <button class="studio-color" type="button" data-studio-field="eyeColor" data-value="#527b54" style="background:#527b54" aria-label="أخضر"></button>
+              <button class="studio-color" type="button" data-studio-field="eyeColor" data-value="#30343b" style="background:#30343b" aria-label="رمادي"></button>
+            </div>
+          </section>
+
+          <section class="studio-card" id="studioPanelBody">
+            <div class="studio-card-title"><strong>القوام وبياناتك</strong><small>تتعدل في أي وقت</small></div>
+            <div class="studio-subtitle">شكل الشخصية</div>
+            <div class="studio-segment-row">
+              <button class="studio-segment selected" type="button" data-studio-field="characterStyle" data-value="masculine">رجالي</button>
+              <button class="studio-segment" type="button" data-studio-field="characterStyle" data-value="feminine">نسائي</button>
+              <button class="studio-segment" type="button" data-studio-field="characterStyle" data-value="neutral">محايد</button>
+            </div>
+            <div class="studio-subtitle">شكل الوجه</div>
+            <div class="studio-segment-row">
+              <button class="studio-segment selected" type="button" data-studio-field="faceShape" data-value="oval">بيضاوي</button>
+              <button class="studio-segment" type="button" data-studio-field="faceShape" data-value="round">دائري</button>
+              <button class="studio-segment" type="button" data-studio-field="faceShape" data-value="square">مربع</button>
+            </div>
+            <div class="studio-subtitle">بنية الجسم</div>
+            <div class="studio-segment-row">
+              <button class="studio-segment" type="button" data-studio-field="bodyShape" data-value="slim">رفيع</button>
+              <button class="studio-segment selected" type="button" data-studio-field="bodyShape" data-value="average">متوسط</button>
+              <button class="studio-segment" type="button" data-studio-field="bodyShape" data-value="broad">عريض</button>
+            </div>
+            <div class="studio-subtitle">بيانات إضافية</div>
+            <div class="studio-form-grid">
+              <div><label for="studioAge">السن</label><input class="studio-field" id="studioAge" type="number" min="13" max="100" inputmode="numeric"></div>
+              <div><label for="studioActivity">نشاطك اليومي</label><select class="studio-field" id="studioActivity"><option value="low">قليل الحركة</option><option value="moderate">متوسط</option><option value="high">نشط</option></select></div>
+              <div style="grid-column:1/-1"><label for="studioOccupation">وظيفتك أو طبيعة يومك</label><input class="studio-field" id="studioOccupation" maxlength="60" placeholder="موظف، طالب، عمل حر..."></div>
+            </div>
+            <p class="studio-help">الطول والوزن بيأثروا على النسب العامة للأفاتار بشكل تقديري، ومش قياسًا طبيًا للجسم.</p>
+          </section>
+        </aside>
+      </div>
+      <footer class="studio-footer">
+        <div class="studio-footer-note">🔒 اختياراتك وصورتك بتفضل محفوظة على جهازك.<br>اضغط حفظ التغييرات لتثبيت الشكل الجديد.</div>
+        <button class="studio-save" id="studioSaveBtn" type="button">حفظ التغييرات　✓</button>
+      </footer>
+    </section>
