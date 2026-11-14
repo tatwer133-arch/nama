@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: nama
+    runtime: static
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: bash ./build.sh
+    staticPublishPath: ./public
+    headers:
+      - path: /index.html
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
