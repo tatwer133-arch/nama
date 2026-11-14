@@ -34,7 +34,10 @@
         <section class="studio-center" aria-label="معاينة الأفاتار">
           <div class="studio-stage-heading"><strong>أفاتارك في نَما</strong><span>معاينة مباشرة لكل تعديل</span></div>
           <div class="studio-stage-floor" aria-hidden="true"></div>
-          <svg class="studio-full-avatar" id="studioAvatar" viewBox="0 0 220 300" role="img" aria-label="معاينة شخصية نَما"><g id="studioAvatarFigure"></g></svg>
+          <div class="studio-full-avatar" id="studioAvatar" role="img" aria-label="معاينة الأفاتار الواقعي">
+            <img id="studioAvatarImage" src="./avatar-realistic.webp" alt="شخصية نَما ثلاثية الأبعاد" draggable="false" />
+            <svg id="studioAvatarEffects" viewBox="0 0 256 512" preserveAspectRatio="none" aria-hidden="true"></svg>
+          </div>
           <div class="studio-avatar-caption" id="studioAvatarCaption">شخصيتك بتتغير مع كل اختيار</div>
         </section>
 
@@ -106,11 +109,14 @@
           </section>
 
           <section class="studio-card" id="studioPanelClothes">
-            <div class="studio-card-title"><strong>الملابس</strong><small>غيّر الستايل واللون</small></div>
+            <div class="studio-card-title"><strong>شكل الملابس</strong><small>التغيير بيظهر على الشخصية مباشرة</small></div>
             <div class="studio-choice-grid compact">
               <button class="studio-option selected" type="button" data-studio-field="outfitStyle" data-value="tshirt"><span class="studio-option-visual">👕</span><b>تيشيرت</b></button>
               <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="hoodie"><span class="studio-option-visual">🧥</span><b>هودي</b></button>
               <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="jacket"><span class="studio-option-visual">🧥</span><b>جاكيت</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="polo"><span class="studio-option-visual">👔</span><b>بولو</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="shirt"><span class="studio-option-visual">👔</span><b>قميص</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="sport"><span class="studio-option-visual">🏃</span><b>رياضي</b></button>
             </div>
             <div class="studio-subtitle">لون الملابس</div>
             <div class="studio-color-row">
@@ -120,6 +126,13 @@
               <button class="studio-color" type="button" data-studio-field="outfitColor" data-value="#d77d61" style="background:#d77d61" aria-label="برتقالي"></button>
               <button class="studio-color" type="button" data-studio-field="outfitColor" data-value="#424454" style="background:#424454" aria-label="كحلي"></button>
               <button class="studio-color" type="button" data-studio-field="outfitColor" data-value="#e0c2a0" style="background:#e0c2a0" aria-label="بيج"></button>
+            </div>
+            <div class="studio-subtitle">لون البنطلون</div>
+            <div class="studio-color-row">
+              <button class="studio-color selected" type="button" data-studio-field="pantsColor" data-value="#29445f" style="background:#29445f" aria-label="جينز أزرق"></button>
+              <button class="studio-color" type="button" data-studio-field="pantsColor" data-value="#252a35" style="background:#252a35" aria-label="أسود"></button>
+              <button class="studio-color" type="button" data-studio-field="pantsColor" data-value="#777a80" style="background:#777a80" aria-label="رمادي"></button>
+              <button class="studio-color" type="button" data-studio-field="pantsColor" data-value="#8a6548" style="background:#8a6548" aria-label="بني"></button>
             </div>
           </section>
 
