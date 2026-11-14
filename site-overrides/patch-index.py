@@ -166,9 +166,9 @@ show_page_new = '''  function showPage(id) {
   }
 '''
 html = replace_once(html, show_page_old, show_page_new, "page navigation integration")
-script_end = html.rfind("</script>")
+script_end = html.rfind("})();")
 if script_end < 0:
-    raise SystemExit("Inline script closing tag not found.")
+    raise SystemExit("Application closure not found.")
 html = html[:script_end] + chr(10) + studio_js + chr(10) + html[script_end:]
 
 index.write_text(html, encoding='utf-8')
