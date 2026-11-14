@@ -80,7 +80,13 @@
     }else if(glasses==='square'){
       glassesOverlay='<g fill="none" stroke="#29252d" stroke-width="3.3" stroke-linejoin="round"><rect x="102" y="54" width="26" height="22" rx="6"/><rect x="135" y="54" width="26" height="22" rx="6"/><path d="M128 63 Q131 60 135 63 M102 62 L96 60 M161 62 L167 60"/></g>';
     }
-    $('studioAvatarEffects').innerHTML=skinTint+pantsTint+clothes+garmentDetails+hairDetails+beardOverlay+glassesOverlay;
+    const image=$('studioAvatarImage');
+    const outfitAssets={tshirt:'./avatar-realistic.webp',hoodie:'./avatar-hoodie.webp',jacket:'./avatar-jacket.webp'};
+    if(image){
+      image.src=outfitAssets[outfitStyle]||outfitAssets.tshirt;
+      image.alt=({tshirt:'تيشيرت',hoodie:'هودي',jacket:'جاكيت'}[outfitStyle]||'ملابس')+' — أفاتار نَما';
+    }
+    $('studioAvatarEffects').innerHTML=hairDetails+beardOverlay+glassesOverlay;
     const art=$('studioAvatar');
     if(art){art.dataset.hair=hairStyle;art.dataset.outfit=outfitStyle;art.dataset.body=p.bodyShape||'average';}
   }
