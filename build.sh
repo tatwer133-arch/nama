@@ -58,7 +58,7 @@ shutil.copytree(source, public)
 
 # Apply reviewed source fixes without modifying the immutable, checksum-verified upload.
 overrides = Path("site-overrides")
-allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js", "avatar-realistic.webp.b64"}
+allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js", "avatar-realistic.webp.b64", "avatar-hoodie.webp.b64", "avatar-jacket.webp.b64"}
 if overrides.exists():
     for candidate in sorted(overrides.rglob("*")):
         if candidate.is_dir():
@@ -73,6 +73,11 @@ if overrides.exists():
             if not image_bytes.startswith(b"RIFF") or image_bytes[8:12] != b"WEBP":
                 raise SystemExit("Realistic avatar asset is not a valid WebP image")
             (public / "avatar-realistic.webp").write_bytes(image_bytes)
+        elif relative in {"avatar-hoodie.webp.b64", "avatar-jacket.webp.b64"}:
+            image_bytes = base64.b64decode(candidate.read_text(encoding="ascii").strip(), validate=True)
+            if not image_bytes.startswith(b"RIFF") or image_bytes[8:12] != b"WEBP":
+                raise SystemExit(f"Invalid outfit avatar WebP: {relative}")
+            (public / relative.removesuffix(".b64")).write_bytes(image_bytes)
     patcher = overrides / "patch-index.py"
     if patcher.is_file():
         subprocess.run(["python3", str(patcher), str(public)], check=True)
@@ -85,7 +90,7 @@ if manifest.get("start_url") != "./" or manifest.get("scope") != "./":
 if not manifest.get("icons") or manifest["icons"][0].get("src") != "./icon.svg":
     raise SystemExit("PWA manifest icon path must be project-relative")
 
-for filename in ("index.html", "sw.js", "manifest.json", "icon.svg", "avatar-realistic.webp"):
+for filename in ("index.html", "sw.js", "manifest.json", "icon.svg", "avatar-realistic.webp", "avatar-hoodie.webp", "avatar-jacket.webp"):
     if not (public / filename).is_file():
         raise SystemExit(f"Build output missing: {filename}")
 
