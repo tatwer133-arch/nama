@@ -150,10 +150,15 @@
   });
   $('studioBackBtn').addEventListener('click',closeAvatarStudio);
   $('studioSaveBtn').addEventListener('click',()=>{
-    const height=Number(state.profile.height),weight=Number(state.profile.weight),age=Number(state.profile.age);
+    const height=Number($('studioHeight').value),weight=Number($('studioWeight').value),age=$('studioAge').value.trim()===''?'':Number($('studioAge').value);
     if(!Number.isFinite(height)||height<120||height>230){toast('راجع الطول: لازم يكون من 120 إلى 230 سم');$('studioHeight').focus();return;}
     if(!Number.isFinite(weight)||weight<25||weight>300){toast('راجع الوزن: لازم يكون من 25 إلى 300 كجم');$('studioWeight').focus();return;}
-    if(age&&(!Number.isFinite(age)||age<13||age>100)){toast('راجع السن: لازم يكون من 13 إلى 100 سنة');$('studioAge').focus();return;}
+    if(age!==''&&(!Number.isFinite(age)||age<13||age>100)){toast('راجع السن: لازم يكون من 13 إلى 100 سنة');$('studioAge').focus();return;}
+    state.profile.height=height;
+    state.profile.weight=weight;
+    state.profile.age=age;
+    state.profile.occupation=$('studioOccupation').value.trim().slice(0,60);
+    state.profile.activity=$('studioActivity').value;
     save();
     renderAvatar();
     renderSettings();
