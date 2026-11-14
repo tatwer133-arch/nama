@@ -86,7 +86,7 @@
       image.src=outfitAssets[outfitStyle]||outfitAssets.tshirt;
       image.alt=({tshirt:'تيشيرت',hoodie:'هودي',jacket:'جاكيت'}[outfitStyle]||'ملابس')+' — أفاتار نَما';
     }
-    $('studioAvatarEffects').innerHTML=hairDetails+beardOverlay+glassesOverlay;
+    $('studioAvatarEffects').innerHTML=skinTint+pantsTint+clothes+hairDetails+beardOverlay+glassesOverlay;
     const art=$('studioAvatar');
     if(art){art.dataset.hair=hairStyle;art.dataset.outfit=outfitStyle;art.dataset.body=p.bodyShape||'average';}
   }
