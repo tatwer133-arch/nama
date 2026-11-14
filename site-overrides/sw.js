@@ -1,4 +1,4 @@
-const CACHE = 'nama-shell-v13';
+const CACHE = 'nama-shell-v14';
 const APP_SCOPE = self.registration.scope;
 const APP_INDEX = new URL('index.html', APP_SCOPE).href;
 const APP_ASSETS = [
