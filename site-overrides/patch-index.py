@@ -131,17 +131,17 @@ studio_js = (overrides_dir / "studio.js").read_text(encoding="utf-8")
 html = replace_once(
     html,
     "const mass=clamp(1+(bmi-22)*.027,.78,1.34);",
-    "const bodyShapeFactor=p.bodyShape==='slim'?.91:p.bodyShape==='broad'?1.10:1;\\n    const mass=clamp((1+(bmi-22)*.027)*bodyShapeFactor,.72,1.42);",
+    "const bodyShapeFactor=p.bodyShape==='slim'?.91:p.bodyShape==='broad'?1.10:1;" + chr(10) + "    const mass=clamp((1+(bmi-22)*.027)*bodyShapeFactor,.72,1.42);",
     "body shape rendering"
 )
 html = replace_once(
     html,
     '<button class="secondary-btn" id="editProfileBtn">تعديل بيانات الأفاتار وقص الصورة</button>',
-    '<button class="primary-btn" id="openAvatarStudioBtn" type="button">✨ تخصيص شكل الأفاتار</button>\\n        <button class="secondary-btn" id="editProfileBtn">تعديل بيانات الأفاتار وقص الصورة والبيانات الأساسية</button>',
+    '<button class="primary-btn" id="openAvatarStudioBtn" type="button">✨ تخصيص شكل الأفاتار</button>' + chr(10) + '        <button class="secondary-btn" id="editProfileBtn">تعديل بيانات الأفاتار وقص الصورة والبيانات الأساسية</button>',
     "avatar studio settings entry"
 )
-html = replace_once(html, "</style>", studio_css + "\\n  </style>", "avatar studio styles")
-html = replace_once(html, "</main>", studio_html + "\\n  </main>", "dedicated avatar page")
+html = replace_once(html, "</style>", studio_css + chr(10) + "  </style>", "avatar studio styles")
+html = replace_once(html, "</main>", studio_html + chr(10) + "  </main>", "dedicated avatar page")
 
 show_page_old = '''  function showPage(id) {
     document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
@@ -169,7 +169,7 @@ html = replace_once(html, show_page_old, show_page_new, "page navigation integra
 script_end = html.rfind("</script>")
 if script_end < 0:
     raise SystemExit("Inline script closing tag not found.")
-html = html[:script_end] + "\\n" + studio_js + "\\n" + html[script_end:]
+html = html[:script_end] + chr(10) + studio_js + chr(10) + html[script_end:]
 
 index.write_text(html, encoding='utf-8')
 print('Applied microphone and GitHub Pages subpath fixes.')
