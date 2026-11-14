@@ -1,11 +1,12 @@
-const CACHE = 'nama-shell-v14';
+const CACHE = 'nama-shell-v15';
 const APP_SCOPE = self.registration.scope;
 const APP_INDEX = new URL('index.html', APP_SCOPE).href;
 const APP_ASSETS = [
   APP_SCOPE,
   APP_INDEX,
   new URL('manifest.json', APP_SCOPE).href,
-  new URL('icon.svg', APP_SCOPE).href
+  new URL('icon.svg', APP_SCOPE).href,
+  new URL('avatar-realistic.webp', APP_SCOPE).href
 ];
 
 self.addEventListener('install', event => {
