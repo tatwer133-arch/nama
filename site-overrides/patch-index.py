@@ -122,5 +122,54 @@ new_speech = '''  function speechErrorMessage(code){
 html = replace_once(html, old_speech, new_speech, 'speech recognition implementation')
 html = replace_once(html, "if ('serviceWorker' in navigator && location.protocol.startsWith('http')) window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));", "if ('serviceWorker' in navigator && location.protocol.startsWith('http')) window.addEventListener('load',()=>{const appBase=new URL('./',location.href);navigator.serviceWorker.register(new URL('sw.js',appBase),{scope:appBase.pathname,updateViaCache:'none'}).catch(error=>console.warn('Nama offline support could not be enabled:',error));});", 'service worker registration')
 html = html.replace("    outing:{title:'خروجة أو وقت بره',icon:'🌳',desc:'غيّر جوك واعمل حاجة بتحبها',unit:'مرة',goal:1,step:1},\n    outing:{title:'خروجة أو وقت بره',icon:'🌳',desc:'غيّر جوك واعمل حاجة بتحبها',unit:'مرة',goal:1,step:1},", "    outing:{title:'خروجة أو وقت بره',icon:'🌳',desc:'غيّر جوك واعمل حاجة بتحبها',unit:'مرة',goal:1,step:1},")
+# Attach the modular avatar studio to the existing app while keeping the uploaded source archive unchanged.
+overrides_dir = Path(__file__).parent
+studio_html = (overrides_dir / "studio.html").read_text(encoding="utf-8")
+studio_css = (overrides_dir / "studio.css").read_text(encoding="utf-8")
+studio_js = (overrides_dir / "studio.js").read_text(encoding="utf-8")
+
+html = replace_once(
+    html,
+    "const mass=clamp(1+(bmi-22)*.027,.78,1.34);",
+    "const bodyShapeFactor=p.bodyShape==='slim'?.91:p.bodyShape==='broad'?1.10:1;\\n    const mass=clamp((1+(bmi-22)*.027)*bodyShapeFactor,.72,1.42);",
+    "body shape rendering"
+)
+html = replace_once(
+    html,
+    '<button class="secondary-btn" id="editProfileBtn">تعديل بيانات الأفاتار وقص الصورة</button>',
+    '<button class="primary-btn" id="openAvatarStudioBtn" type="button">✨ تخصيص شكل الأفاتار</button>\\n        <button class="secondary-btn" id="editProfileBtn">تعديل بيانات الأفاتار وقص الصورة والبيانات الأساسية</button>',
+    "avatar studio settings entry"
+)
+html = replace_once(html, "</style>", studio_css + "\\n  </style>", "avatar studio styles")
+html = replace_once(html, "</main>", studio_html + "\\n  </main>", "dedicated avatar page")
+
+show_page_old = '''  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+    if (id==='progressPage') renderProgress();
+    if (id==='settingsPage') renderSettings();
+    if (id==='coachPage') { syncCoachForm(); drawAvatarInto('coachAvatarFigure'); drawAvatarInto('chatAvatarFigure'); renderCoachPlan(); renderChatMessages(); }
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+'''
+show_page_new = '''  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id===id));
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===id));
+    const studioMode=id==='avatarPage';
+    document.querySelector('.app')?.classList.toggle('studio-expanded',studioMode);
+    document.querySelector('.app-wrap')?.classList.toggle('studio-expanded',studioMode);
+    if (id==='progressPage') renderProgress();
+    if (id==='settingsPage') renderSettings();
+    if (id==='avatarPage') studioRefresh(true);
+    if (id==='coachPage') { syncCoachForm(); drawAvatarInto('coachAvatarFigure'); drawAvatarInto('chatAvatarFigure'); renderCoachPlan(); renderChatMessages(); }
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+'''
+html = replace_once(html, show_page_old, show_page_new, "page navigation integration")
+script_end = html.rfind("</script>")
+if script_end < 0:
+    raise SystemExit("Inline script closing tag not found.")
+html = html[:script_end] + "\\n" + studio_js + "\\n" + html[script_end:]
+
 index.write_text(html, encoding='utf-8')
 print('Applied microphone and GitHub Pages subpath fixes.')
