@@ -58,7 +58,7 @@ shutil.copytree(source, public)
 
 # Apply reviewed source fixes without modifying the immutable, checksum-verified upload.
 overrides = Path("site-overrides")
-allowed_overrides = {"sw.js", "manifest.json", "patch-index.py"}
+allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js"}
 if overrides.exists():
     for candidate in sorted(overrides.rglob("*")):
         if candidate.is_dir():
@@ -66,7 +66,7 @@ if overrides.exists():
         relative = candidate.relative_to(overrides).as_posix()
         if relative not in allowed_overrides:
             raise SystemExit(f"Unexpected site override: {relative}")
-        if relative != "patch-index.py":
+        if relative in {"sw.js", "manifest.json"}:
             shutil.copy2(candidate, public / relative)
     patcher = overrides / "patch-index.py"
     if patcher.is_file():
