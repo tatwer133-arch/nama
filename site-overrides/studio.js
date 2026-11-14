@@ -53,8 +53,12 @@
     const target=$('studioPanel'+tab.charAt(0).toUpperCase()+tab.slice(1));
     const options=$('studioOptions');
     if(target&&options){
-      const top=target.getBoundingClientRect().top-options.getBoundingClientRect().top+options.scrollTop-58;
-      options.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+      if(window.matchMedia&&window.matchMedia('(max-width: 820px)').matches){
+        target.scrollIntoView({behavior:'smooth',block:'start'});
+      }else{
+        const top=target.getBoundingClientRect().top-options.getBoundingClientRect().top+options.scrollTop-58;
+        options.scrollTo({top:Math.max(0,top),behavior:'smooth'});
+      }
     }
   }
   function openAvatarStudio(){
