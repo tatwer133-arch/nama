@@ -58,7 +58,7 @@ shutil.copytree(source, public)
 
 # Apply reviewed source fixes without modifying the immutable, checksum-verified upload.
 overrides = Path("site-overrides")
-allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js", "avatar-runtime.js", "avatar-realistic.webp.b64"}
+allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js", "avatar-runtime.js", "avatar-realistic.webp.b64", "avatar-assets.zip"}
 if overrides.exists():
     for candidate in sorted(overrides.rglob("*")):
         if candidate.is_dir():
@@ -79,6 +79,36 @@ if overrides.exists():
             if len(image_bytes) != 22918:
                 raise SystemExit(f"Unexpected transparent avatar byte length: {len(image_bytes)}")
             (public / "avatar-realistic.webp").write_bytes(image_bytes)
+        elif relative == "avatar-assets.zip":
+            avatar_archive = candidate.read_bytes()
+            expected_assets_sha256 = "d7fb8c845981f6def12471e72aca786004c01a1133aec10bc8bdfaa709abbafe"
+            actual_assets_sha256 = hashlib.sha256(avatar_archive).hexdigest()
+            if actual_assets_sha256 != expected_assets_sha256:
+                raise SystemExit(f"Avatar assets archive checksum mismatch: {actual_assets_sha256}")
+            with zipfile.ZipFile(BytesIO(avatar_archive)) as avatar_zip:
+                bad_avatar = avatar_zip.testzip()
+                if bad_avatar is not None:
+                    raise SystemExit(f"Corrupt avatar asset: {bad_avatar}")
+                expected_names = {
+                    "avatar-female.webp", "avatar-male-tshirt.webp",
+                    "avatar-male-hoodie.webp", "avatar-male-jacket.webp",
+                    "portrait-girl.webp", "portrait-woman-young.webp",
+                    "portrait-woman-senior.webp", "portrait-boy.webp",
+                    "portrait-man-young.webp", "portrait-man-senior.webp",
+                    "manifest.json"
+                }
+                asset_names = set(avatar_zip.namelist())
+                if asset_names != expected_names:
+                    raise SystemExit(f"Avatar asset set mismatch: {sorted(asset_names)}")
+                for asset_name in sorted(expected_names - {"manifest.json"}):
+                    asset_bytes = avatar_zip.read(asset_name)
+                    if not asset_bytes.startswith(b"RIFF") or asset_bytes[8:12] != b"WEBP":
+                        raise SystemExit(f"Invalid WebP avatar asset: {asset_name}")
+                    (public / asset_name).write_bytes(asset_bytes)
+                avatar_manifest = json.loads(avatar_zip.read("manifest.json").decode("utf-8"))
+                for asset_name in expected_names - {"manifest.json"}:
+                    if asset_name not in avatar_manifest:
+                        raise SystemExit(f"Avatar asset missing from manifest: {asset_name}")
     patcher = overrides / "patch-index.py"
     if patcher.is_file():
         subprocess.run(["python3", str(patcher), str(public)], check=True)
@@ -91,7 +121,7 @@ if manifest.get("start_url") != "./" or manifest.get("scope") != "./":
 if not manifest.get("icons") or manifest["icons"][0].get("src") != "./icon.svg":
     raise SystemExit("PWA manifest icon path must be project-relative")
 
-for filename in ("index.html", "sw.js", "manifest.json", "icon.svg", "avatar-realistic.webp"):
+for filename in ("index.html", "sw.js", "manifest.json", "icon.svg", "avatar-realistic.webp", "avatar-female.webp", "avatar-male-tshirt.webp", "avatar-male-hoodie.webp", "avatar-male-jacket.webp", "portrait-girl.webp", "portrait-woman-young.webp", "portrait-woman-senior.webp", "portrait-boy.webp", "portrait-man-young.webp", "portrait-man-senior.webp"):
     if not (public / filename).is_file():
         raise SystemExit(f"Build output missing: {filename}")
 
