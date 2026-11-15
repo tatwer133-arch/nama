@@ -19,7 +19,7 @@
       <section id="lobby" class="lobby">
         <div class="eyebrow"><span class="spark">✧</span> لعبة مصرية أصيلة <span class="spark">✧</span></div>
         <h1>لمّة زمان<br><em>على موبايلك</em></h1>
-        <p class="intro">افتح أوضة، ابعت اللينك لصاحبك، والعبوا السيجا سوا من أي مكان.</p>
+        <p class="intro">العب مع صاحبك من أي مكان برابط دعوة، أو اتحدّى الكمبيوتر في 3 مستويات.</p>
         <div class="demo-illustration" aria-hidden="true"><div class="demo-board"><span class="dc p1"></span><span class="dc p2"></span><span class="dc p1"></span><span class="dc p2"></span><span class="dc p1"></span><span class="dc p2"></span><span class="dc p1"></span><span class="dc p2"></span><span class="dc p1"></span></div><div class="demo-pill">⚡ متحدّي صاحبك؟</div></div>
         <div class="panel">
           <label for="nameInput" class="field-label">اسمك في الماتش</label>
@@ -29,7 +29,12 @@
             <div class="choices" id="boardChoice"><button type="button" class="choice selected" data-size="5"><strong>5 × 5</strong><span>12 حجر لكل لاعب</span></button><button type="button" class="choice" data-size="7"><strong>7 × 7</strong><span>24 حجر لكل لاعب</span></button></div>
             <div class="field-label spaced">توزيع الحجارة في الدور</div>
             <div class="choices tight" id="dropsChoice"><button type="button" class="choice selected" data-drops="2">حجرين</button><button type="button" class="choice" data-drops="1">حجر واحد</button></div>
-            <button type="button" class="primary-btn" id="createButton"><span>اعمل أوضة جديدة</span><span class="arrow">←</span></button>
+            <button type="button" class="primary-btn" id="createButton"><span>🌐 العب مع صاحبك أونلاين</span><span class="arrow">←</span></button>
+            <div class="bot-options">
+              <div class="field-label spaced">🤖 أو اتحدّى الكمبيوتر</div>
+              <div class="choices tight" id="botChoice"><button class="choice" data-ai="easy" type="button">سهل</button><button class="choice selected" data-ai="medium" type="button">متوسط</button><button class="choice" data-ai="hard" type="button">صعب</button></div>
+              <button type="button" id="botButton" class="secondary-btn bot-btn">🤖 العب ضد الكمبيوتر دلوقتي</button>
+            </div>
           </div>
           <div class="join-controls" id="joinControls" hidden>
             <div class="invitation"><span>🎟️</span><div><b>صاحبك عازمك على ماتش!</b><small>اضغط دخول عشان تنضم لأوضته</small></div></div>
@@ -37,12 +42,12 @@
             <button type="button" class="text-btn" id="cancelJoin">اعمل أوضة خاصة بيا بدل دي</button>
           </div>
         </div>
-        <p class="footer-note"><span class="online-dot"></span> لعب حقيقي مباشر · من غير تسجيل حساب</p>
+        <p class="footer-note"><span class="online-dot"></span> غرف أونلاين مجانية · العب مع الروبوت حتى بدون إنترنت</p><p id="connectionInfo" class="connection-info" aria-live="polite">جاري توصيل خدمة اللعب الأونلاين...</p>
       </section>
 
       <section id="gameScreen" class="game-screen" hidden>
-        <div class="match-heading"><div><span class="section-eyebrow">ماتش أونلاين</span><h2>مين هيغلب التاني؟</h2></div><button type="button" id="exitButton" class="small-outline">خروج</button></div>
-        <div class="room-strip"><div class="room-number"><small>كود الأوضة</small><b id="roomCode">------</b></div><button type="button" id="shareButton" class="share-btn"><span>↗</span> ابعت دعوة</button></div>
+        <div class="match-heading"><div><span class="section-eyebrow" id="matchMode">ماتش أونلاين</span><h2>مين هيغلب التاني؟</h2></div><button type="button" id="exitButton" class="small-outline">خروج</button></div>
+        <div class="room-strip" id="roomStrip"><div class="room-number"><small>كود الأوضة</small><b id="roomCode">------</b></div><button type="button" id="shareButton" class="share-btn"><span>↗</span> ابعت دعوة</button></div>
         <div class="players">
           <div class="player-card" id="player0"><div class="avatar a0">●</div><div class="player-info"><small>الحجر الفيروزي</small><b id="playerName0">أنت</b><span id="playerOnline0">متصل</span></div><div class="score"><b id="left0">12</b><small>حجر</small></div></div>
           <span class="versus">VS</span>
@@ -60,5 +65,5 @@
   </div>
   <div id="rulesModal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="rulesTitle" hidden><div class="modal"><button type="button" class="modal-close" id="closeRules" aria-label="إغلاق">✕</button><span class="modal-ornament">✺</span><h2 id="rulesTitle">أصول السيجا</h2><p>الفلاحي على أصوله، ومعاه اختيارات للطرق المختلفة اللي الناس بتلعب بيها.</p><ol><li>كل لاعب معاه <b>12 حجر في 5×5</b> أو <b>24 حجر في 7×7</b>.</li><li>كل واحد يوزّع حجر أو حجرين في الدور، حسب اختياركم، والمربع اللي في النص يفضل فاضي.</li><li>بعد التوزيع، اللاعب التاني هو اللي يبدأ التحريك. الحركة خطوة واحدة يمين أو شمال أو فوق أو تحت، من غير قطر.</li><li>لو حاصرت حجر صاحبك بين حجرين ليك <b>بسبب حركتك</b>، بتاكله. ممكن تاكل أكتر من واحد بنفس النقلة.</li><li>حجر النص ما بيتاكلش، لكن يقدر يساعد في الأكل.</li><li>لو أكلت، تقدر تكمّل بنفس الحجر لو فيه أكلة تانية، أو تنهي الدور.</li><li>اللي ياكل كل حجارة خصمه يكسب. لو مفيش نقلات لأحد الطرفين، التاني بياخد دور إضافي.</li></ol><div class="rule-note">قاعدة تنظيمية: لو عدّت 100 نقلة من غير أكل، يفوز اللي فاضل معاه حجارة أكتر، أو يحصل تعادل.</div><button type="button" class="primary-btn" id="gotRules">تمام، فهمت!</button></div></div>
   <div id="toast" class="toast" role="alert" aria-live="polite"></div>
-  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script><script src="./socket.io/socket.io.js"></script><script type="module" src="./app.js"></script>
+  <script src="./socket.io/socket.io.js?v=5"></script><script type="module" src="./app.js?v=5"></script>
 </body></html>

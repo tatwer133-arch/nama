@@ -52,6 +52,7 @@ jobs:
           cp -a seega-game/. public/seega/
           node --check public/seega/app.js
           node --check public/seega/game.mjs
+          node --check public/seega/bot.mjs
           node --check public/seega/socket.io/socket.io.js
           node --check public/seega/sw.js
           test -s public/seega/index.html
