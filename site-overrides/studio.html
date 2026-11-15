@@ -15,7 +15,7 @@
           <nav class="studio-nav" aria-label="أقسام تخصيص الأفاتار">
             <button type="button" class="selected" data-studio-tab="photo"><span class="studio-nav-icon">◉</span><span>صورتك</span></button>
             <button type="button" data-studio-tab="hair"><span class="studio-nav-icon">♟</span><span>الشعر</span></button>
-            <button type="button" data-studio-tab="beard"><span class="studio-nav-icon">◒</span><span>اللحية</span></button>
+            <button type="button" data-studio-tab="beard" data-studio-gender="masculine"><span class="studio-nav-icon">◒</span><span>اللحية</span></button>
             <button type="button" data-studio-tab="glasses"><span class="studio-nav-icon">⌕</span><span>النظارة</span></button>
             <button type="button" data-studio-tab="clothes"><span class="studio-nav-icon">♧</span><span>الملابس</span></button>
             <button type="button" data-studio-tab="colors"><span class="studio-nav-icon">◉</span><span>الألوان</span></button>
@@ -34,12 +34,32 @@
         <section class="studio-center" aria-label="معاينة الأفاتار">
           <div class="studio-stage-heading"><strong>أفاتارك في نَما</strong><span>معاينة مباشرة لكل تعديل</span></div>
           <div class="studio-stage-floor" aria-hidden="true"></div>
-          <svg class="studio-full-avatar" id="studioAvatar" viewBox="0 0 760 1560" role="img" aria-label="معاينة الأفاتار الواقعي"><g id="studioAvatarFigure"></g></svg>
+          <svg class="studio-full-avatar" id="studioAvatar" viewBox="0 0 320 640" role="img" aria-label="معاينة الأفاتار الواقعي"><g id="studioAvatarFigure"></g></svg>
           <div class="studio-avatar-caption" id="studioAvatarCaption">شخصيتك بتتغير مع كل اختيار</div>
         </section>
 
         <aside class="studio-options" id="studioOptions" aria-label="اختيارات الشخصية">
           <div class="studio-options-head"><strong>اختيارات شخصيتك</strong><small>اختار وعدّل وشوف التغيير فورًا</small></div>
+
+          <section class="studio-card studio-identity-card" id="studioPanelIdentity">
+            <div class="studio-card-title"><strong>اختار شخصيتك وعمرك</strong><small>الشكل والملامح تتغير تلقائيًا</small></div>
+            <div class="studio-identity-grid">
+              <button class="studio-identity-option" type="button" data-studio-preset="girl"><img src="./portrait-girl.webp" alt="" loading="lazy"><span>فتاة صغيرة</span><small>13–17 سنة</small></button>
+              <button class="studio-identity-option selected" type="button" data-studio-preset="woman"><img src="./portrait-woman-young.webp" alt="" loading="lazy"><span>امرأة شابة</span><small>18–39 سنة</small></button>
+              <button class="studio-identity-option" type="button" data-studio-preset="seniorWoman"><img src="./portrait-woman-senior.webp" alt="" loading="lazy"><span>سيدة كبيرة</span><small>60 سنة فأكثر</small></button>
+              <button class="studio-identity-option" type="button" data-studio-preset="boy"><img src="./portrait-boy.webp" alt="" loading="lazy"><span>ولد صغير</span><small>13–17 سنة</small></button>
+              <button class="studio-identity-option" type="button" data-studio-preset="man"><img src="./portrait-man-young.webp" alt="" loading="lazy"><span>شاب</span><small>18–39 سنة</small></button>
+              <button class="studio-identity-option" type="button" data-studio-preset="seniorMan"><img src="./portrait-man-senior.webp" alt="" loading="lazy"><span>رجل كبير</span><small>60 سنة فأكثر</small></button>
+            </div>
+            <div class="studio-subtitle">مرحلتك العمرية</div>
+            <div class="studio-age-choice-row">
+              <button type="button" class="studio-age-choice" data-studio-age="16">مراهق</button>
+              <button type="button" class="studio-age-choice selected" data-studio-age="26">شاب</button>
+              <button type="button" class="studio-age-choice" data-studio-age="48">ناضج</button>
+              <button type="button" class="studio-age-choice" data-studio-age="65">كبير في السن</button>
+            </div>
+            <p class="studio-help">اختار الفئة الأقرب ليك، أو اكتب سنك الدقيق تحت. الأفاتار هيغيّر ملامحه تلقائيًا ويحافظ على طولك ووزنك واختياراتك.</p>
+          </section>
 
           <section class="studio-card" id="studioPanelPhoto">
             <div class="studio-card-title"><strong>إضافة صورتك</strong><small>اختياري</small></div>
@@ -108,9 +128,16 @@
           <section class="studio-card" id="studioPanelClothes">
             <div class="studio-card-title"><strong>شكل الملابس</strong><small>التغيير بيظهر على الشخصية مباشرة</small></div>
             <div class="studio-choice-grid compact">
-              <button class="studio-option selected" type="button" data-studio-field="outfitStyle" data-value="tshirt"><span class="studio-option-visual">👕</span><b>تيشيرت</b></button>
-              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="hoodie"><span class="studio-option-visual">🧥</span><b>هودي</b></button>
-              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="jacket"><span class="studio-option-visual">🧥</span><b>جاكيت</b></button>
+              <button class="studio-option selected" type="button" data-studio-field="outfitStyle" data-value="tshirt" data-outfit-gender="masculine"><span class="studio-option-visual">👕</span><b>تيشيرت</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="hoodie" data-outfit-gender="both"><span class="studio-option-visual">🧥</span><b>هودي</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="jacket" data-outfit-gender="both"><span class="studio-option-visual">🧥</span><b>جاكيت</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="polo" data-outfit-gender="masculine"><span class="studio-option-visual">👔</span><b>بولو</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="shirt" data-outfit-gender="masculine"><span class="studio-option-visual">👔</span><b>قميص</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="sport" data-outfit-gender="both"><span class="studio-option-visual">🏃</span><b>رياضي</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="blouse" data-outfit-gender="feminine"><span class="studio-option-visual">👚</span><b>بلوزة</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="cardigan" data-outfit-gender="feminine"><span class="studio-option-visual">🧥</span><b>كارديجان</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="dress" data-outfit-gender="feminine"><span class="studio-option-visual">👗</span><b>فستان</b></button>
+              <button class="studio-option" type="button" data-studio-field="outfitStyle" data-value="abaya" data-outfit-gender="feminine"><span class="studio-option-visual">🧕</span><b>عباية</b></button>
             </div>
             <div class="studio-subtitle">لون الملابس</div>
             <div class="studio-color-row">
