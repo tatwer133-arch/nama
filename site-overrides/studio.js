@@ -6,7 +6,17 @@
     if(!studioRoot)return;
     const p=state.profile||defaults.profile;
     const studioDefaults={characterStyle:'masculine',hairStyle:'short',hairColor:'#302832',facialHair:'none',glasses:'none',outfitStyle:'tshirt',outfitColor:'#7568c8',pantsColor:'#29445f',skinTone:'#b97955'};
-    Object.entries(studioDefaults).forEach(([key,value])=>{if(!p[key])p[key]=value;});
+    Object.entries(studioDefaults).forEach(([key,value])=>{if(p[key]==null||p[key]==='')p[key]=value;});
+    const identityGender=p.characterStyle==='feminine'?'feminine':'masculine';
+    const femaleOutfits=['hoodie','jacket','sport','blouse','cardigan','dress','abaya'];
+    const maleOutfits=['tshirt','hoodie','jacket','sport','polo','shirt'];
+    if(identityGender==='feminine'){
+      if(!femaleOutfits.includes(p.outfitStyle))p.outfitStyle='hoodie';
+      p.facialHair='none';
+      if(['bald','buzz'].includes(p.hairStyle))p.hairStyle='long';
+    }else if(!maleOutfits.includes(p.outfitStyle)){
+      p.outfitStyle='tshirt';
+    }
     if(syncInputs){
       $('studioHeight').value=p.height||170;
       $('studioWeight').value=p.weight||70;
