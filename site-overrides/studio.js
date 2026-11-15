@@ -89,7 +89,7 @@
     studioDirty=false;
     studioRefresh(true);
     showPage('avatarPage');
-    studioSetTab('photo');
+    studioSetTab('identity');
   }
   function closeAvatarStudio(){
     if(studioDirty&&!confirm('فيه تعديلات لسه ما اتحفظتش. تحب تخرج من غير حفظ؟'))return;
