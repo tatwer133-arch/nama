@@ -60,21 +60,10 @@ shutil.copytree(source, public)
 overrides = Path("site-overrides")
 allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js", "avatar-runtime.js", "avatar-realistic.webp.b64", "avatar-assets.zip"}
 if overrides.exists():
-    # Restore the already-checked avatar asset archive from its uploaded
-    # base64 chunks; these are a transport format, not separate site overrides.
-    chunk_dir = overrides / "avatar-assets"
-    if chunk_dir.is_dir() and not (overrides / "avatar-assets.zip").exists():
-        pieces = sorted(chunk_dir.glob("*.b64"))
-        if not pieces:
-            raise SystemExit("Avatar archive chunks missing")
-        joined = "".join(part.read_text(encoding="ascii").strip() for part in pieces)
-        (overrides / "avatar-assets.zip").write_bytes(base64.b64decode(joined, validate=True))
     for candidate in sorted(overrides.rglob("*")):
         if candidate.is_dir():
             continue
         relative = candidate.relative_to(overrides).as_posix()
-        if relative.startswith("avatar-assets/"):
-            continue
         if relative not in allowed_overrides:
             raise SystemExit(f"Unexpected site override: {relative}")
         if relative in {"sw.js", "manifest.json"}:
@@ -92,7 +81,7 @@ if overrides.exists():
             (public / "avatar-realistic.webp").write_bytes(image_bytes)
         elif relative == "avatar-assets.zip":
             avatar_archive = candidate.read_bytes()
-            expected_assets_sha256 = "1b59c1940a4f64e123bd78ae51f9e057182dd97f45a86b696d72e59d9ad3878b"
+            expected_assets_sha256 = "d7fb8c845981f6def12471e72aca786004c01a1133aec10bc8bdfaa709abbafe"
             actual_assets_sha256 = hashlib.sha256(avatar_archive).hexdigest()
             if actual_assets_sha256 != expected_assets_sha256:
                 raise SystemExit(f"Avatar assets archive checksum mismatch: {actual_assets_sha256}")
@@ -173,19 +162,4 @@ if shutil.which("node"):
 print("Nama build + static QA passed. Original source archive SHA-256:", actual_sha256)
 print("HTML IDs:", len(collector.ids), "(unique)")
 print("Published files:", ", ".join(sorted(p.name for p in public.iterdir())))
-
-# Publish the independent Egyptian Seega game under /nama/seega/ while
-# preserving the original Nama app and its verified build output.
-seega_source = Path("seega-game")
-seega_required = ("index.html","styles.css","app.js","game.mjs","manifest.json","icon.svg","sw.js","socket.io/socket.io.js")
-for relative in seega_required:
-    if not (seega_source / relative).is_file():
-        raise SystemExit(f"Seega asset missing: {relative}")
-seega_target = public / "seega"
-shutil.copytree(seega_source, seega_target)
-if shutil.which("node"):
-    for asset in ("app.js","game.mjs","socket.io/socket.io.js","sw.js"):
-        subprocess.run(["node","--check",str(seega_target / asset)], check=True)
-print("Seega game staged at:", seega_target)
-
 PY
