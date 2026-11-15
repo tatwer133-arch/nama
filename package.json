@@ -1,0 +1,9 @@
+{
+  "name": "seega-fallahi",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Egyptian Seega multiplayer game — zero external dependencies",
+  "scripts": {"start": "node server.mjs", "test": "node --test test/*.test.mjs"},
+  "engines": {"node": ">=20"}
+}
