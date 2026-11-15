@@ -95,13 +95,19 @@ function namaRealisticAvatarLayers(p,targetId='avatar'){
       }
     }
   }
-  // A selected face photo is a face-only layer, preserving the generated full-body outfit.
-  if(p.avatarPhoto){
-    const faceX=gender==='feminine'?103:111;
-    const faceY=gender==='feminine'?39:39;
-    const faceW=gender==='feminine'?114:98;
-    const faceH=gender==='feminine'?118:112;
-    const photo=namaAvatarEscape(p.avatarPhoto);
+  // For teens and seniors, reuse the already-created matching portrait to age the face.
+  // A personal photo always takes priority over the generated age portrait.
+  let portraitSrc='';
+  if(!p.avatarPhoto){
+    if(ageBand==='teen')portraitSrc=gender==='feminine'?'./portrait-girl.webp':'./portrait-boy.webp';
+    else if(ageBand==='senior')portraitSrc=gender==='feminine'?'./portrait-woman-senior.webp':'./portrait-man-senior.webp';
+  }
+  if(p.avatarPhoto||portraitSrc){
+    const faceX=gender==='feminine'?99:101;
+    const faceY=gender==='feminine'?0:0;
+    const faceW=gender==='feminine'?122:118;
+    const faceH=gender==='feminine'?130:124;
+    const photo=p.avatarPhoto?namaAvatarEscape(p.avatarPhoto):portraitSrc;
     out+='<defs><clipPath id="'+faceId+'-photo"><ellipse cx="'+(faceX+faceW/2)+'" cy="'+(faceY+faceH/2)+'" rx="'+(faceW/2)+'" ry="'+(faceH/2)+'"/></clipPath></defs>';
     out+='<image href="'+photo+'" x="'+faceX+'" y="'+faceY+'" width="'+faceW+'" height="'+faceH+'" preserveAspectRatio="xMidYMid slice" clip-path="url(#'+faceId+'-photo)"/>';
   }
