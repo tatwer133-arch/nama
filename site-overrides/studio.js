@@ -5,7 +5,7 @@
   function studioRefresh(syncInputs=false){
     if(!studioRoot)return;
     const p=state.profile||defaults.profile;
-    const studioDefaults={hairStyle:'short',hairColor:'#302832',facialHair:'beard',glasses:'none',outfitStyle:'tshirt',outfitColor:'#303138',pantsColor:'#29445f',skinTone:'#dca77e'};
+    const studioDefaults={characterStyle:'masculine',hairStyle:'short',hairColor:'#302832',facialHair:'none',glasses:'none',outfitStyle:'tshirt',outfitColor:'#7568c8',pantsColor:'#29445f',skinTone:'#b97955'};
     Object.entries(studioDefaults).forEach(([key,value])=>{if(!p[key])p[key]=value;});
     if(syncInputs){
       $('studioHeight').value=p.height||170;
@@ -23,6 +23,28 @@
       btn.classList.toggle('selected',active);
       btn.setAttribute('aria-pressed',active?'true':'false');
     });
+    const ageBand=namaAvatarAgeBand(p.age||26);
+    studioRoot.querySelectorAll('[data-studio-age]').forEach(btn=>{
+      const selected=namaAvatarAgeBand(Number(btn.dataset.studioAge))===ageBand;
+      btn.classList.toggle('selected',selected);
+      btn.setAttribute('aria-pressed',selected?'true':'false');
+    });
+    const gender=p.characterStyle==='feminine'?'feminine':'masculine';
+    studioRoot.querySelectorAll('[data-studio-preset]').forEach(btn=>{
+      const preset=btn.dataset.studioPreset;
+      const selected=(gender==='feminine'&&((preset==='girl'&&ageBand==='teen')||(preset==='woman'&&ageBand==='young')||(preset==='seniorWoman'&&ageBand==='senior')))
+        ||(gender==='masculine'&&((preset==='boy'&&ageBand==='teen')||(preset==='man'&&ageBand==='young')||(preset==='seniorMan'&&ageBand==='senior')));
+      btn.classList.toggle('selected',selected);
+      btn.setAttribute('aria-pressed',selected?'true':'false');
+    });
+    studioRoot.querySelectorAll('[data-outfit-gender]').forEach(btn=>{
+      const allowed=btn.dataset.outfitGender==='both'||btn.dataset.outfitGender===gender;
+      btn.hidden=!allowed;
+    });
+    studioRoot.querySelectorAll('[data-studio-gender]').forEach(el=>{
+      el.hidden=el.dataset.studioGender!==gender;
+    });
+    $('studioAvatarCaption').textContent=namaAvatarAgeLabel(p.age||26)+' · '+(gender==='feminine'?'شخصية أنثوية':'شخصية رجالية')+' · '+(p.height||170)+' سم · '+(p.weight||70)+' كجم';
     const thumb=$('studioPhotoThumb');
     thumb.replaceChildren();
     if(p.avatarPhoto){
@@ -38,7 +60,6 @@
     $('studioFaceZoomValue').textContent=(Number(p.faceZoom??1.45)).toFixed(2)+'×';
     $('studioFaceXValue').textContent=String(Number(p.faceOffsetX??0));
     $('studioFaceYValue').textContent=String(Number(p.faceOffsetY??-7));
-    $('studioAvatarCaption').textContent=(p.height||170)+' سم · '+(p.weight||70)+' كجم · '+(p.avatarPhoto?'صورتك مضافة':'شخصية قابلة للتخصيص');
     drawAvatarInto('studioAvatarFigure');
   }
   function studioSetDirty(){
@@ -81,13 +102,53 @@
     showPage('settingsPage');
   }
   function studioUpdateProfile(key,value){
-    state.profile[key]=value;
+    const p=state.profile;
+    p[key]=value;
+    if(key==='characterStyle'){
+      if(value==='feminine'){
+        if(!['hoodie','jacket','sport','blouse','cardigan','dress','abaya'].includes(p.outfitStyle))p.outfitStyle='hoodie';
+        if(['bald','buzz'].includes(p.hairStyle))p.hairStyle='long';
+        p.facialHair='none';
+      }else{
+        if(!['tshirt','hoodie','jacket','sport','polo','shirt'].includes(p.outfitStyle))p.outfitStyle='tshirt';
+        if(p.hairStyle==='long')p.hairStyle='short';
+        if(p.facialHair==='none'&&p.glasses==null)p.glasses='none';
+      }
+    }
+    if(key==='age'&&Number(value)<18&&p.characterStyle==='feminine')p.facialHair='none';
     studioSetDirty();
     studioRefresh(false);
+  }
+  function studioApplyPreset(preset){
+    const presets={
+      girl:{gender:'feminine',age:16,outfit:'hoodie',hair:'long'},
+      woman:{gender:'feminine',age:26,outfit:'hoodie',hair:'long'},
+      seniorWoman:{gender:'feminine',age:65,outfit:'abaya',hair:'medium'},
+      boy:{gender:'masculine',age:16,outfit:'hoodie',hair:'short'},
+      man:{gender:'masculine',age:26,outfit:'tshirt',hair:'short'},
+      seniorMan:{gender:'masculine',age:65,outfit:'jacket',hair:'short'}
+    };
+    const option=presets[preset];
+    if(!option)return;
+    state.profile.characterStyle=option.gender;
+    state.profile.age=option.age;
+    state.profile.outfitStyle=option.outfit;
+    state.profile.hairStyle=option.hair;
+    if(option.gender==='feminine')state.profile.facialHair='none';
+    studioSetDirty();
+    studioRefresh(true);
   }
   studioRoot.addEventListener('click',event=>{
     const tab=event.target.closest('[data-studio-tab]');
     if(tab){studioSetTab(tab.dataset.studioTab);return;}
+    const preset=event.target.closest('[data-studio-preset]');
+    if(preset){studioApplyPreset(preset.dataset.studioPreset);return;}
+    const ageChoice=event.target.closest('[data-studio-age]');
+    if(ageChoice){
+      $('studioAge').value=ageChoice.dataset.studioAge;
+      studioUpdateProfile('age',Number(ageChoice.dataset.studioAge));
+      return;
+    }
     const choice=event.target.closest('[data-studio-field]');
     if(choice){
       let value=choice.dataset.value;
@@ -105,9 +166,9 @@
       if(!Number.isFinite(number)||number<item[1]||number>item[2])return;
       state.profile[item[0]]=number;
       studioSetDirty();
-      if(target.id.startsWith('studioFace'))studioRefresh(false);
+      if(target.id.startsWith('studioFace')||target.id==='studioAge')studioRefresh(false);
       else{
-        $('studioAvatarCaption').textContent=(state.profile.height||170)+' سم · '+(state.profile.weight||70)+' كجم · '+(state.profile.avatarPhoto?'صورتك مضافة':'شخصية قابلة للتخصيص');
+        $('studioAvatarCaption').textContent=namaAvatarAgeLabel(state.profile.age||26)+' · '+(state.profile.characterStyle==='feminine'?'شخصية أنثوية':'شخصية رجالية')+' · '+(state.profile.height||170)+' سم · '+(state.profile.weight||70)+' كجم';
         drawAvatarInto('studioAvatarFigure');
       }
       if(target.id==='studioFaceZoom')$('studioFaceZoomValue').textContent=number.toFixed(2)+'×';
