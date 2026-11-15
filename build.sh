@@ -92,7 +92,7 @@ if overrides.exists():
             (public / "avatar-realistic.webp").write_bytes(image_bytes)
         elif relative == "avatar-assets.zip":
             avatar_archive = candidate.read_bytes()
-            expected_assets_sha256 = "d7fb8c845981f6def12471e72aca786004c01a1133aec10bc8bdfaa709abbafe"
+            expected_assets_sha256 = "1b59c1940a4f64e123bd78ae51f9e057182dd97f45a86b696d72e59d9ad3878b"
             actual_assets_sha256 = hashlib.sha256(avatar_archive).hexdigest()
             if actual_assets_sha256 != expected_assets_sha256:
                 raise SystemExit(f"Avatar assets archive checksum mismatch: {actual_assets_sha256}")
