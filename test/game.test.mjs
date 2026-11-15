@@ -59,3 +59,14 @@ test('invalid player and wrong turn rejected',()=>{
  const g=newGame();assert.throws(()=>apply(g,1,{type:'place',at:0}),/استنى دورك/);
  assert.throws(()=>apply(g,0,{type:'place',at:0.1}),/مش متاحة/);
 });
+test('when second player has no legal move after placement, first plays',()=>{
+ let g=newGame(5,2);
+ const neighbors=[7,11,13,17];
+ while(g.phase==='placement'){
+  const at=g.board.findIndex((x,i)=>x===null&&i!==12&&(g.turn===0?neighbors.includes(i)||g.placed[0]>=4:!neighbors.includes(i)));
+  const fallback=g.board.findIndex((x,i)=>x===null&&i!==12);
+  g=apply(g,g.turn,{type:'place',at:at<0?fallback:at});
+ }
+ assert.equal(g.phase,'movement');
+ assert.equal(g.turn,0,'player one gets the turn when second is blocked');
+});

@@ -88,6 +88,12 @@ export function apply(g, player, action) {
     if (next.placed[0]===total && next.placed[1]===total) {
       next.phase='movement'; next.turn=1-next.first;
       next.dropped=0; next.message='خلص التوزيع، ابدأوا التحريك والأكل';
+      if (!canMove(next,next.turn)) {
+        if (canMove(next,1-next.turn)) {
+          next.turn=1-next.turn;
+          next.message='اللاعب التاني محبوس، الدور على خصمه لفتح حركة';
+        } else decideStalemate(next);
+      }
     } else if (next.dropped>=next.drops || next.placed[player]>=total) {
       next.dropped=0; next.turn=1-player;
       next.message='الدور على اللاعب التاني';
