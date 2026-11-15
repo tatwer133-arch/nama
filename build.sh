@@ -162,4 +162,19 @@ if shutil.which("node"):
 print("Nama build + static QA passed. Original source archive SHA-256:", actual_sha256)
 print("HTML IDs:", len(collector.ids), "(unique)")
 print("Published files:", ", ".join(sorted(p.name for p in public.iterdir())))
+
+# Publish the independent Egyptian Seega game under /nama/seega/ while
+# preserving the original Nama app and its verified build output.
+seega_source = Path("seega-game")
+seega_required = ("index.html","styles.css","app.js","game.mjs","manifest.json","icon.svg","sw.js","socket.io/socket.io.js")
+for relative in seega_required:
+    if not (seega_source / relative).is_file():
+        raise SystemExit(f"Seega asset missing: {relative}")
+seega_target = public / "seega"
+shutil.copytree(seega_source, seega_target)
+if shutil.which("node"):
+    for asset in ("app.js","game.mjs","socket.io/socket.io.js","sw.js"):
+        subprocess.run(["node","--check",str(seega_target / asset)], check=True)
+print("Seega game staged at:", seega_target)
+
 PY

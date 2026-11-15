@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f2426"><meta name="color-scheme" content="dark">
+  <meta name="description" content="السيجا الفلاحي — العب مع صحابك من أي مكان في العالم">
+  <link rel="manifest" href="./manifest.json"><link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css"><title>السيجا الفلاحي | العب مع صاحبك</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="السيجا الفلاحي"><span class="brand-icon" aria-hidden="true">✦</span><div><strong>السيجا الفلاحي</strong><small>لعبة جدودنا · أونلاين</small></div></div>
+      <button class="circle-button" id="rulesButton" type="button" title="قواعد اللعبة" aria-label="قواعد اللعبة">؟</button>
+    </header>
+    <main>
+      <section id="lobby" class="lobby">
+        <div class="eyebrow"><span class="spark">✧</span> لعبة مصرية أصيلة <span class="spark">✧</span></div>
+        <h1>لمّة زمان<br><em>على موبايلك</em></h1>
+        <p class="intro">افتح أوضة، ابعت اللينك لصاحبك، والعبوا السيجا سوا من أي مكان.</p>
+        <div class="demo-illustration" aria-hidden="true"><div class="demo-board"><span class="dc p1"></span><span class="dc p2"></span><span class="dc p1"></span><span class="dc p2"></span><span class="dc p1"></span><span class="dc p2"></span><span class="dc p1"></span><span class="dc p2"></span><span class="dc p1"></span></div><div class="demo-pill">⚡ متحدّي صاحبك؟</div></div>
+        <div class="panel">
+          <label for="nameInput" class="field-label">اسمك في الماتش</label>
+          <input type="text" id="nameInput" maxlength="24" autocomplete="nickname" placeholder="مثلاً: الأسطى محمد">
+          <div id="createControls">
+            <div class="field-label spaced">اختار مساحة السيجا</div>
+            <div class="choices" id="boardChoice"><button type="button" class="choice selected" data-size="5"><strong>5 × 5</strong><span>12 حجر لكل لاعب</span></button><button type="button" class="choice" data-size="7"><strong>7 × 7</strong><span>24 حجر لكل لاعب</span></button></div>
+            <div class="field-label spaced">توزيع الحجارة في الدور</div>
+            <div class="choices tight" id="dropsChoice"><button type="button" class="choice selected" data-drops="2">حجرين</button><button type="button" class="choice" data-drops="1">حجر واحد</button></div>
+            <button type="button" class="primary-btn" id="createButton"><span>اعمل أوضة جديدة</span><span class="arrow">←</span></button>
+          </div>
+          <div class="join-controls" id="joinControls" hidden>
+            <div class="invitation"><span>🎟️</span><div><b>صاحبك عازمك على ماتش!</b><small>اضغط دخول عشان تنضم لأوضته</small></div></div>
+            <button type="button" id="joinButton" class="primary-btn">ادخل الماتش <span class="arrow">←</span></button>
+            <button type="button" class="text-btn" id="cancelJoin">اعمل أوضة خاصة بيا بدل دي</button>
+          </div>
+        </div>
+        <p class="footer-note"><span class="online-dot"></span> لعب حقيقي مباشر · من غير تسجيل حساب</p>
+      </section>
+
+      <section id="gameScreen" class="game-screen" hidden>
+        <div class="match-heading"><div><span class="section-eyebrow">ماتش أونلاين</span><h2>مين هيغلب التاني؟</h2></div><button type="button" id="exitButton" class="small-outline">خروج</button></div>
+        <div class="room-strip"><div class="room-number"><small>كود الأوضة</small><b id="roomCode">------</b></div><button type="button" id="shareButton" class="share-btn"><span>↗</span> ابعت دعوة</button></div>
+        <div class="players">
+          <div class="player-card" id="player0"><div class="avatar a0">●</div><div class="player-info"><small>الحجر الفيروزي</small><b id="playerName0">أنت</b><span id="playerOnline0">متصل</span></div><div class="score"><b id="left0">12</b><small>حجر</small></div></div>
+          <span class="versus">VS</span>
+          <div class="player-card" id="player1"><div class="avatar a1">●</div><div class="player-info"><small>الحجر النحاسي</small><b id="playerName1">في الانتظار...</b><span id="playerOnline1">غير متصل</span></div><div class="score"><b id="left1">12</b><small>حجر</small></div></div>
+        </div>
+        <div class="turn-status" id="turnStatus" role="status"><span class="status-icon">◉</span><span id="statusText">مستنيين صاحبك يدخل الأوضة</span></div>
+        <div class="board-frame"><div class="board-top"><span>✦ السيجا المصرية ✦</span><span id="phaseLabel">مرحلة التوزيع</span></div><div id="board" class="board" role="grid" aria-label="رقعة السيجا"></div><div class="board-bottom"><span>✺</span><span>الأرض · الحجارة · اللمة</span><span>✺</span></div></div>
+        <div id="moveHelp" class="move-help">اضغط على المربع الفاضي عشان تحط حجرك</div>
+        <button type="button" class="secondary-btn" id="endChainButton" hidden>خلاص، انهي دوري</button>
+        <div id="endGame" class="end-game" hidden><div id="winnerArt" class="winner-art">🏆</div><h3 id="resultTitle">انتهى الماتش!</h3><p id="resultDescription"></p><button type="button" class="primary-btn" id="rematchButton">العبوا تاني ↻</button><p id="rematchStatus"></p></div>
+        <div class="game-actions"><button type="button" id="shareBottomButton" class="action-link">🔗 شارك الماتش</button><button type="button" id="rulesBottomButton" class="action-link">📖 طريقة اللعب</button></div>
+      </section>
+    </main>
+    <footer class="app-footer"><span class="footer-logo">✦</span> من تراث بلدنا لموبايلك <span class="footer-logo">✦</span></footer>
+  </div>
+  <div id="rulesModal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="rulesTitle" hidden><div class="modal"><button type="button" class="modal-close" id="closeRules" aria-label="إغلاق">✕</button><span class="modal-ornament">✺</span><h2 id="rulesTitle">أصول السيجا</h2><p>الفلاحي على أصوله، ومعاه اختيارات للطرق المختلفة اللي الناس بتلعب بيها.</p><ol><li>كل لاعب معاه <b>12 حجر في 5×5</b> أو <b>24 حجر في 7×7</b>.</li><li>كل واحد يوزّع حجر أو حجرين في الدور، حسب اختياركم، والمربع اللي في النص يفضل فاضي.</li><li>بعد التوزيع، اللاعب التاني هو اللي يبدأ التحريك. الحركة خطوة واحدة يمين أو شمال أو فوق أو تحت، من غير قطر.</li><li>لو حاصرت حجر صاحبك بين حجرين ليك <b>بسبب حركتك</b>، بتاكله. ممكن تاكل أكتر من واحد بنفس النقلة.</li><li>حجر النص ما بيتاكلش، لكن يقدر يساعد في الأكل.</li><li>لو أكلت، تقدر تكمّل بنفس الحجر لو فيه أكلة تانية، أو تنهي الدور.</li><li>اللي ياكل كل حجارة خصمه يكسب. لو مفيش نقلات لأحد الطرفين، التاني بياخد دور إضافي.</li></ol><div class="rule-note">قاعدة تنظيمية: لو عدّت 100 نقلة من غير أكل، يفوز اللي فاضل معاه حجارة أكتر، أو يحصل تعادل.</div><button type="button" class="primary-btn" id="gotRules">تمام، فهمت!</button></div></div>
+  <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script><script src="./socket.io/socket.io.js"></script><script type="module" src="./app.js"></script>
+</body></html>
