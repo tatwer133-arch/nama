@@ -60,10 +60,21 @@ shutil.copytree(source, public)
 overrides = Path("site-overrides")
 allowed_overrides = {"sw.js", "manifest.json", "patch-index.py", "studio.html", "studio.css", "studio.js", "avatar-runtime.js", "avatar-realistic.webp.b64", "avatar-assets.zip"}
 if overrides.exists():
+    # Restore the already-checked avatar asset archive from its uploaded
+    # base64 chunks; these are a transport format, not separate site overrides.
+    chunk_dir = overrides / "avatar-assets"
+    if chunk_dir.is_dir() and not (overrides / "avatar-assets.zip").exists():
+        pieces = sorted(chunk_dir.glob("*.b64"))
+        if not pieces:
+            raise SystemExit("Avatar archive chunks missing")
+        joined = "".join(part.read_text(encoding="ascii").strip() for part in pieces)
+        (overrides / "avatar-assets.zip").write_bytes(base64.b64decode(joined, validate=True))
     for candidate in sorted(overrides.rglob("*")):
         if candidate.is_dir():
             continue
         relative = candidate.relative_to(overrides).as_posix()
+        if relative.startswith("avatar-assets/"):
+            continue
         if relative not in allowed_overrides:
             raise SystemExit(f"Unexpected site override: {relative}")
         if relative in {"sw.js", "manifest.json"}:
