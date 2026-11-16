@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {initialGame,applyAction,legalActions,captureTargets,aiAction,hasMoves} from '../src/game.js';
+test('starts with legal place moves and forbids center',()=>{const g=initialGame();assert.equal(g.phase,'placement');assert.equal(legalActions(g).length,24);assert.equal(applyAction(g,0,{kind:'place',to:12}).ok,false);});
+test('two stones per turn and phase transition',()=>{let g=initialGame();for(let k=0;k<24;k++){let p=g.turn;const a=legalActions(g)[0];const r=applyAction(g,p,a);assert.equal(r.ok,true);g=r.game;if(k===0)assert.equal(g.turn,0);if(k===1)assert.equal(g.turn,1);}assert.equal(g.phase,'movement');assert.equal(g.turn,1);assert.equal(g.placed[0],12);assert.equal(g.placed[1],12);});
+test('captures enemy by sandwich and center is safe',()=>{const b=Array(25).fill(0);b[13]=1;b[12]=2;assert.deepEqual(captureTargets(b,11,0),[]);const c=Array(25).fill(0);c[0]=1;c[1]=2;assert.deepEqual(captureTargets(c,2,0),[1]);});
+test('moves capture and remove pieces',()=>{const g=initialGame();g.phase='movement';g.turn=0;g.board[0]=1;g.board[1]=2;g.board[7]=1;g.board[20]=2;const r=applyAction(g,0,{kind:'move',from:7,to:2});assert.equal(r.ok,true);assert.equal(r.game.board[1],0);assert.equal(r.game.board[2],1);assert.equal(r.game.board[7],0);});
+test('computer picks a legal action',()=>{const g=initialGame();const a=aiAction(g,0);assert.ok(legalActions(g).some(x=>x.to===a.to));});
+test('no moves when no space adjacent',()=>{const g=initialGame();g.board=Array(25).fill(2);g.board[0]=1;assert.equal(hasMoves(g,0),false);});

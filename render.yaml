@@ -1,15 +1,19 @@
 services:
   - type: web
-    name: nama
-    runtime: static
-    branch: main
-    autoDeployTrigger: commit
-    buildCommand: bash ./build.sh
-    staticPublishPath: ./public
-    headers:
-      - path: /index.html
-        name: Cache-Control
-        value: no-cache, no-store, must-revalidate
-      - path: /sw.js
-        name: Cache-Control
-        value: no-cache
+    name: seega-royale
+    runtime: node
+    plan: free
+    buildCommand: 'echo No dependencies to install'
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: BASE_URL
+        sync: false
+# ATTENTION: Free instances use ephemeral disk! For actual accounts/wallets,
+# move to external persistent DB or a paid persistent disk before launch.
