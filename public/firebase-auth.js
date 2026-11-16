@@ -1,0 +1,31 @@
+import {firebaseConfig} from './firebase-config.js';
+export const firebaseReady=()=>Boolean(firebaseConfig?.apiKey&&firebaseConfig?.authDomain&&firebaseConfig?.projectId&&firebaseConfig?.appId);
+let authInit=null;
+async function sdk(){
+ if(!firebaseReady())throw Error('دخول جوجل وفيسبوك محتاج ربط حساب Firebase الخاص باللعبة وتفعيل مزود الدخول. تقدر تلعب كضيف أو بالإيميل المحلي حاليًا.');
+ if(!authInit)authInit=(async()=>{
+  const [{initializeApp,getApps,getApp},mod]=await Promise.all([
+   import('https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js'),
+   import('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js')]);
+  const app=getApps().length?getApp():initializeApp(firebaseConfig);
+  return{auth:mod.getAuth(app),mod};
+ })();
+ return authInit;
+}
+export async function firebaseSignIn(kind){
+ const {auth,mod}=await sdk();
+ const provider=kind==='google'?new mod.GoogleAuthProvider():kind==='facebook'?new mod.FacebookAuthProvider():null;
+ if(!provider)throw Error('مزود الدخول غير مدعوم');
+ // Firebase handles OAuth on the provider's own domain; this app never sees passwords.
+ try{
+  const result=await mod.signInWithPopup(auth,provider);
+  const u=result.user;
+  if(!u?.uid)throw Error('فشل التحقق من حسابك');
+  return{provider:kind,uid:u.uid,email:u.email||null,name:u.displayName||'لاعب سيجا',photoURL:u.photoURL||null};
+ }catch(e){
+  if(e?.code==='auth/popup-blocked'||e?.code==='auth/cancelled-popup-request')throw Error('المتصفح منع نافذة الدخول. جرّب تسمح بالنوافذ المنبثقة.');
+  if(e?.code==='auth/unauthorized-domain')throw Error('عنوان اللعبة مش مضاف لدومينات Firebase المصرح بها.');
+  if(e?.code==='auth/account-exists-with-different-credential')throw Error('الإيميل مستخدم بطريقة دخول تانية.');
+  throw Error('الدخول ما اكتملش: '+String(e?.message||'راجع إعدادات مزود الدخول'));
+ }
+}

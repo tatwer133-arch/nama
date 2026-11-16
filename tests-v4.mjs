@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {initialGame,legalActions,applyAction,centerOf} from './public/game-engine.js';
+import {initialVariant,variantActions,variantApply,CHINESE,chineseLayout,GAME_CATALOG} from './public/variants.js';
+test('9×9 authentic Seega: 40 stones per side',()=>{let g=initialGame(9);let n=0;while(g.phase==='placement'&&n++<100){const out=applyAction(g,g.turn,legalActions(g)[0]);assert(out.ok);g=out.game}assert.deepEqual(g.placed,[40,40]);assert.equal(g.board[centerOf(9)],0)});
+test('American checkerboard initial pieces',()=>{const g=initialVariant('american');assert.equal(g.board.filter(v=>v===1).length,12);assert.equal(g.board.filter(v=>v===2).length,12);const moves=variantActions(g);assert(moves.length>0);assert(variantApply(g,0,moves[0]).ok)});
+test('American checkers mandatory jump',()=>{const g=initialVariant('american');g.board.fill(0);g.turn=0;g.board[5*8+2]=1;g.board[4*8+3]=2;g.board[5*8+6]=1;const a=variantActions(g);assert.equal(a.length,1);assert.equal(a[0].to,3*8+4);assert(variantApply(g,0,a[0]).ok)});
+test('Russian captures backwards',()=>{const g=initialVariant('russian');g.board.fill(0);g.board[3*8+2]=1;g.board[4*8+3]=2;const actions=variantActions(g);assert(actions.some(a=>a.to===5*8+4&&a.captures.length));});
+test('Chinese checkers 121 holes and ten marbles in opposite triangles',()=>{const g=initialVariant('chinese');assert.equal(CHINESE.positions.length,121);assert.equal(chineseLayout.length,121);assert.equal(g.board.filter(v=>v===1).length,10);assert.equal(g.board.filter(v=>v===2).length,10);assert.equal(new Set(CHINESE.homes.flat()).size,20);assert(variantActions(g).length>0);assert(variantApply(g,0,variantActions(g)[0]).ok)});
+test('six selectable modes',()=>{assert.equal(new Set(GAME_CATALOG.map(x=>x.id)).size,6)});
+
+test('American king can step and capture backwards',()=>{const g=initialVariant('american');g.board.fill(0);g.board[3*8+2]=3;const a=variantActions(g);assert(a.some(x=>x.to===4*8+3&&x.captures.length===0));g.board[4*8+3]=2;assert(variantActions(g).some(x=>x.to===5*8+4&&x.captures.length===1));});
