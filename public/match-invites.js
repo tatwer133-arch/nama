@@ -28,7 +28,7 @@ export async function matchInvitesStart(handlers={}){
   emitUpdate();
   for(const c of snap.docChanges()){
    const data=decorate(c.doc);
-   if(c.type==='added'&&alive(data)&&!seen.has(data.id)){seen.set(data.id,'pending');onIncoming(data);}
+   if(['added','modified'].includes(c.type)&&alive(data)&&seen.get(data.id)!=='pending'){seen.set(data.id,'pending');onIncoming(data);}
   }
  },e=>onStatus({kind:'error',text:friendly(e)})));
  unsubs.push(fs.onSnapshot(sent,snap=>{
@@ -46,7 +46,7 @@ export async function matchCreate(uid,roomCode,name){
  const {fs,db}=await init();
  if(!uid||uid===me)throw Error('اختار لاعب غيرك');
  const code=cleanRoom(roomCode);if(!code)throw Error('اعمل غرفة صحيحة الأول');
- const ref=fs.doc(fs.collection(db,'matchInvites'));
+ const ref=fs.doc(db,'matchInvites',me+'__'+uid);
  try{await fs.setDoc(ref,{fromUid:me,toUid:uid,roomCode:code,fromName:String(name||'لاعب سيجا').slice(0,24),
   status:'pending',createdAt:fs.serverTimestamp(),updatedAt:fs.serverTimestamp()});}
  catch(e){throw Error(friendly(e));}
