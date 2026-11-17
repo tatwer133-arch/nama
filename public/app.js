@@ -241,6 +241,19 @@ async function cloudSearchIncremental(value){
   const panel=$('#cloud-search-results');if(panel)panel.innerHTML=`<p class="muted" role="status">${esc(e.message)}</p>`;
  }
 }
+function matchInviteRows(){
+ const requests=(state.matchInvites||[]).filter(x=>x.status==='pending');
+ const legacy=(state.cloud?.inbox||[]).filter(x=>x.kind==='invite'&&!x.read&&/^[A-Z0-9]{6}$/.test(x.roomCode||''));
+ if(!requests.length&&!legacy.length)return '';
+ return `<div class="card match-requests"><h3>🎲 دعوات المباريات (${requests.length+legacy.length})</h3>
+ ${requests.map(r=>`<div class="list-row"><div class="row-main"><b>${esc(r.fromName||'لاعب سيجا')} بعت لك تحدّي</b><small>الغرفة: ${esc(r.roomCode)}</small></div>
+ <button class="btn btn-mint" data-action="match-accept" data-id="${esc(r.id)}" data-code="${esc(r.roomCode)}">✅ موافقة</button>
+ <button class="btn btn-secondary" data-action="match-reject" data-id="${esc(r.id)}">رفض</button></div>`).join('')}
+ ${legacy.map(r=>`<div class="list-row"><div class="row-main"><b>${esc(r.text||'دعوة مباراة')}</b><small>الغرفة: ${esc(r.roomCode)}</small></div>
+ <button class="btn btn-mint" data-action="accept-invite" data-notice="${esc(r.id)}" data-code="${esc(r.roomCode)}">✅ موافقة</button>
+ <button class="btn btn-secondary" data-action="decline-invite" data-notice="${esc(r.id)}">رفض</button></div>`).join('')}
+ </div>`;
+}
 function renderCloudSocial(){
  const cloud=state.cloud||{},friends=cloud.friends||[],requests=cloud.requests||[],chat=cloud.publicChat||[];
  const tabs=state.socialMode==='dm'?'':`<div class="tabs"><button data-social="friends" class="${state.socialMode==='friends'?'active':''}">👥 صحابي</button><button data-social="search" class="${state.socialMode==='search'?'active':''}">🔎 إضافة</button><button data-social="world" class="${state.socialMode==='world'?'active':''}">🌍 الشات العام</button></div>`;
@@ -261,7 +274,7 @@ function renderCloudSocial(){
   <div class="world-messages" id="dm-messages">${(cloud.dm||[]).map(m=>messageMarkup(m,true)).join('')||'<p class="muted">ابدأ المحادثة</p>'}</div>
   <form id="dm-form" class="send-row"><input id="dm-input" class="chat-input" maxlength="200" placeholder="اكتب لصاحبك" required><button class="btn btn-primary">إرسال</button></form></div>`;
  }
- return tabs+`${requests.length?`<div class="card"><h3>📨 طلبات الصداقة (${requests.length})</h3>${requests.map(r=>`<div class="list-row">${avatar(r.user)}<div class="row-main"><b>${esc(r.user?.name)}</b><small>${esc(r.user?.id)}</small></div><button data-action="cloud-accept" data-pair="${esc(r.pairId)}" class="btn btn-mint">قبول</button><button data-action="cloud-reject" data-pair="${esc(r.pairId)}" class="btn btn-secondary">رفض</button></div>`).join('')}</div>`:''}
+ return tabs+`${matchInviteRows()}${requests.length?`<div class="card"><h3>📨 طلبات الصداقة (${requests.length})</h3>${requests.map(r=>`<div class="list-row">${avatar(r.user)}<div class="row-main"><b>${esc(r.user?.name)}</b><small>${esc(r.user?.id)}</small></div><button data-action="cloud-accept" data-pair="${esc(r.pairId)}" class="btn btn-mint">قبول</button><button data-action="cloud-reject" data-pair="${esc(r.pairId)}" class="btn btn-secondary">رفض</button></div>`).join('')}</div>`:''}
  <div class="friend-list">${friends.length?friends.map(f=>{
   const unread=(cloud.inbox||[]).filter(x=>x.fromUid===f.uid&&!x.read&&x.kind==='dm').length;
   return `<div class="list-row cloud-friend"><button class="friend-person" data-action="cloud-profile" data-uid="${esc(f.uid)}" aria-label="بروفايل ${esc(f.user.name)}">${avatar(f.user)}<span><b>${esc(f.user.name)}</b><small><span class="presence-circle ${f.online?'online':''}"></span> ${f.online?(f.status==='playing'?'بيلعب الآن':f.status==='watching'?'بيتفرج':'متصل'):'غير متصل'} · ${esc(f.user.id)}</small></span></button><div class="friend-actions">
@@ -275,9 +288,14 @@ function renderCloudSocial(){
 async function showCloudPlayer(uid){
  const p=await cloudGetPlayer(uid);
  const friend=(state.cloud?.friends||[]).some(x=>x.uid===uid);
+ const sent=(state.cloud?.sentRequests||[]).some(x=>x.toUid===uid);
+ const incoming=(state.cloud?.requests||[]).some(x=>x.fromUid===uid);
  const display=`<div class="profile-banner">${avatar(p.user,'large')}<h2>${esc(p.user.name)}</h2><small>${p.online?'🟢 متصل':'⚫ غير متصل'} · ${esc(p.user.id)}</small></div>`;
  const actions=uid===state.me?.firebaseUid?'':
- `<div class="cloud-player-actions">${friend?`<button class="btn btn-secondary" data-action="cloud-dm" data-uid="${esc(uid)}">💬 شات خاص</button>`:`<button class="btn btn-secondary" data-action="cloud-add" data-uid="${esc(uid)}">➕ إضافة صديق</button>`}
+ `<div class="cloud-player-actions">${friend?`<button class="btn btn-secondary" data-action="cloud-dm" data-uid="${esc(uid)}">💬 شات خاص</button>`:
+ sent?'<span class="pill">📨 طلب الصداقة مُرسل</span>':
+ incoming?'<span class="pill">📬 عندك طلب صداقة منه</span>':
+ `<button class="btn btn-secondary" data-action="cloud-add" data-uid="${esc(uid)}">➕ إضافة صديق</button>`}
  ${p.online?`<button class="btn btn-primary" data-action="cloud-challenge" data-uid="${esc(uid)}">🎲 تحدّاه</button>`:''}
  ${friend&&p.online?`<button class="btn btn-secondary" data-action="friend-call" data-uid="${esc(uid)}">📞 اتصال صوتي</button>`:''}</div>`;
  openModal('👤 بروفايل اللاعب',display+actions);
@@ -285,15 +303,25 @@ async function showCloudPlayer(uid){
 async function challengeCloudPlayer(uid){
  if(state.room)throw Error('اخرج من الماتش الحالي قبل دعوة لاعب جديد');
  const person=await cloudGetPlayer(uid);
- if(!person.online)throw Error('اللاعب مش متصل دلوقتي');
+ if(!person.online)throw Error('اللاعب غير متصل حاليًا');
  const friend=(state.cloud?.friends||[]).some(f=>f.uid===uid);
  closeModal();
  await createRoom('private');
- if(!state.room||state.room.kind!=='online')throw Error('تعذر إنشاء الغرفة');
- const text='🎲 '+playerName()+' بعت لك دعوة تحدي مباشر في السيجا';
- if(friend)await cloudSendInbox(uid,'invite',text,state.room.id);
- else await cloudSendPublicInvite(uid,text,state.room.id);
- toast('🎲 دعوة الماتش اتبعتت لـ '+person.user.name+' — سيب الغرفة مفتوحة');
+ if(!state.room||state.room.kind!=='online')throw Error('الغرفة لم تبدأ');
+ try{
+  state.outgoingMatchId=await matchCreate(uid,state.room.id,playerName());
+  toast('🎲 بعت طلب تحدي لـ '+person.user.name+' — مستنيين الموافقة');
+ }catch(error){
+  // Preserve old friend invitation transport if new Firebase rules are not
+  // published yet. Public invites require the secure rules on the server.
+  if(friend&&/Firestore|permissions|الصلاحيات|permission/i.test(error.message)){
+   try{await cloudSendInbox(uid,'invite','🎲 '+playerName()+' بعت لك تحدّي في السيجا',state.room.id);
+    toast('📨 الدعوة اتبعتت؛ لازم صاحبك يوافق من قائمة الأصدقاء');return;
+   }catch{}
+  }
+  await leaveRoom();
+  throw error;
+ }
 }
 function renderSocial(){return `<h1 class="page-title">💬 اللمة والصحاب</h1>${state.cloud?.online?renderCloudSocial():`<div class="demo-banner">☁️ الحسابات والأصدقاء والشات بين الأجهزة محتاجين تفعيل Firebase للمشروع. حسابات الضيف والإيميل المحلي مش متصلة بالشبكة.</div><div class="tabs"><button data-social="friends" class="${state.socialMode==='friends'?'active':''}">👥 معرّفات محفوظة</button><button data-social="search" class="${state.socialMode==='search'?'active':''}">🔎 حفظ ID</button></div>${state.socialMode==='search'?searchSection():friendsSection()}`}`;}
 function renderProfile(){const u=state.me,tier=Math.min(3,u.leagueTier||0),tierNames=['🥉 برونز','🥈 فضة','🥇 ذهب','💎 ماس'];return `<h1 class="page-title">👤 صفحتي</h1>
@@ -424,7 +452,9 @@ async function watchRoom(id){if(!id||id.length!==6)throw Error('كود الغر�
 function shareWatch(){const r=state.room;if(!r?.allowSpectators)return toast('المشاهدة مقفولة');const link=location.origin+'/watch/'+r.id;
  if(navigator.share)navigator.share({title:'اتفرج على ماتش السيجا',url:link}).catch(()=>showLink(link));else if(navigator.clipboard?.writeText)navigator.clipboard.writeText(link).then(()=>toast('اتنسخ لينك المشاهدة 📋')).catch(()=>showLink(link));else showLink(link);
 }
-async function leaveRoom(){if(!state.room)return;await voiceOff();const id=state.room.id;try{await post(`/rooms/${id}/leave`);}catch{}state.room=null;state.chatOpen=false;state.unreadRoom=0;document.querySelectorAll('[data-spectator-audio]').forEach(x=>x.remove());window.history.replaceState({},'','/');cloudPresence().catch(()=>{});view('home');}
+async function leaveRoom(){if(!state.room)return;await voiceOff();const id=state.room.id;
+ if(state.outgoingMatchId){await matchCancel(state.outgoingMatchId);state.outgoingMatchId=null;}
+ try{await post(`/rooms/${id}/leave`);}catch{}state.room=null;state.chatOpen=false;state.unreadRoom=0;document.querySelectorAll('[data-spectator-audio]').forEach(x=>x.remove());window.history.replaceState({},'','/');cloudPresence().catch(()=>{});view('home');}
 function shareRoom(){const r=state.room;if(!r)return;const url=`${location.origin}/room/${r.id}`;if(navigator.share){navigator.share({title:'تعالى نلعب سيجا',text:'تعالى قابلني في سيجا رويال 🎲',url}).catch(()=>{});}else if(navigator.clipboard?.writeText){navigator.clipboard.writeText(url).then(()=>toast('نسخت لينك الغرفة! 📋')).catch(()=>showLink(url));}else showLink(url);}
 function showLink(url){openModal('لينك دعوة صاحبك',`<input class="input" readonly value="${esc(url)}" onclick="this.select()"><p class="muted">انسخ اللينك وابعته في أي شات.</p>`);}
 function openModal(title,body){$('#modal-root').innerHTML=`<div class="modal-backdrop" id="modal-backdrop"><div class="modal-box" role="dialog" aria-modal="true"><div class="modal-head"><span>${esc(title)}</span><button class="close-x" data-action="close-modal">×</button></div>${body}</div></div>`;}
@@ -515,7 +545,7 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='test-audio'){unlockAudio();effect('victory',true);startMusic();if(!state.me?.settings?.music){const u=await patch('/me',{settings:{music:true,sound:true}});setMe(u.user);}toast('🔊 الصوت والموسيقى شغالين');render();if($('#modal-root .settings-popup'))showSettings();}
  else if(a==='rules')showRules();
  else if(a==='close-modal')closeModal();
- else if(a==='logout'){stopMusic();if(state.room)await leaveRoom();await voiceOff();await friendCallsStop().catch(()=>{});await post('/auth/logout');if(firebaseReady()){await cloudSocialStop().catch(()=>{});await firebaseLogout().catch(()=>{});}state.socket?.disconnect();state.me=null;state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[],unread:0};$('#auth-cover').classList.remove('hidden');updateSocialBadge();updateFriendVoiceBar();view('home');}
+ else if(a==='logout'){stopMusic();if(state.room)await leaveRoom();await voiceOff();await friendCallsStop().catch(()=>{});await matchInvitesStop().catch(()=>{});await post('/auth/logout');if(firebaseReady()){await cloudSocialStop().catch(()=>{});await firebaseLogout().catch(()=>{});}state.socket?.disconnect();state.me=null;state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[],unread:0};state.matchInvites=[];state.outgoingInvites=[];state.outgoingMatchId=null;$('#auth-cover').classList.remove('hidden');updateSocialBadge();updateFriendVoiceBar();view('home');}
  else if(a==='cell')await doCell(Number(b.dataset.cell));
  else if(a==='share-room')shareRoom();
  else if(a==='share-watch')shareWatch();
@@ -523,7 +553,25 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='quick-friends')showSocialDialog('friends');
  else if(a==='quick-world')showSocialDialog('world');
  else if(a==='watch-room')await watchRoom(b.dataset.code);
- else if(a==='accept-invite'){await joinRoom(b.dataset.code);if(b.dataset.notice)cloudMarkInbox(b.dataset.notice).catch(()=>{});closeModal();}
+ else if(a==='accept-invite'){
+  if(state.busy)return;
+  state.busy=true;try{
+   await joinRoom(b.dataset.code);
+   if(b.dataset.notice)await cloudMarkInbox(b.dataset.notice).catch(()=>{});
+   closeModal();toast('🎲 دخلت غرفة التحدي');
+  }finally{state.busy=false;}
+ }
+ else if(a==='decline-invite'){if(b.dataset.notice)await cloudMarkInbox(b.dataset.notice);closeModal();toast('رفضت الدعوة');}
+ else if(a==='match-accept'){
+  if(state.busy)return;
+  const id=b.dataset.id,code=b.dataset.code;state.busy=true;try{
+   // Enter only after peer-to-peer handshaking actually succeeds.
+   await joinRoom(code);
+   await matchRespond(id,true).catch(e=>toast('دخلت المباراة، لكن تأكيد الموافقة فشل: '+e.message));
+   closeModal();toast('✅ بدأ التحدي');
+  }finally{state.busy=false;}
+ }
+ else if(a==='match-reject'){await matchRespond(b.dataset.id,false);closeModal();toast('تم رفض التحدي');}
  else if(a==='toggle-spectators'){const allow=!state.room?.allowSpectators;const out=await emit('spectator:toggle',{allow});toast(out.pending?'👀 مستنيين موافقة المنافس':allow?'المشاهدة اتفتحت':'المشاهدة اتقفلت');}
  else if(a==='spectator-approve'){await emit('spectator:response',{accept:true});closeModal();toast('المشاهدة اتفتحت للمباراة');}
  else if(a==='spectator-deny'){await emit('spectator:response',{accept:false});closeModal();toast('رفضت المشاهدة');}
@@ -632,12 +680,27 @@ async function authReady(u){
  setMe(u);$('#auth-cover').classList.add('hidden');startSocket();state.config=await api('/config');state.store=state.config.items;if(state.me?.settings?.music)startMusic();else stopMusic();if(firebaseReady()&&state.me?.firebaseUid){
   cloudSocialStart(state.me,()=>state.room,data=>{state.cloud=data;updateSocialBadge();if(state.tab==='social'&&!state.room)render();},n=>{
    if(n.kind==='error')return toast(n.text);notifyPlayer(n.text,{title:n.kind==='dm'?'رسالة جديدة':'إشعار من سيجا'});
-   if(n.roomCode&&n.id){openModal('📨 دعوة جديدة',`<p>${esc(n.text)}</p><button class="btn btn-primary full" data-action="accept-invite" data-code="${esc(n.roomCode)}" data-notice="${esc(n.id)}">🎲 انضم للمباراة</button><button class="btn btn-secondary full" data-action="close-modal">لاحقًا</button>`);}
+   if(n.roomCode&&n.id&&!state.room){openModal('📨 دعوة مباراة',`<p>${esc(n.text)}</p><button class="btn btn-primary full" data-action="accept-invite" data-code="${esc(n.roomCode)}" data-notice="${esc(n.id)}">✅ موافقة والدخول</button><button class="btn btn-secondary full" data-action="decline-invite" data-notice="${esc(n.id)}">❌ رفض</button>`);}
    if(n.kind==='dm'&&n.fromUid&&!state.room){
     const sender=(state.cloud?.friends||[]).find(f=>f.uid===n.fromUid);
     openModal('💬 رسالة من '+(sender?.user?.name||'صاحبك'),`<p>${esc(n.text)}</p><button class="btn btn-primary full" data-action="cloud-dm" data-uid="${esc(n.fromUid)}">افتح المحادثة</button><button class="btn btn-secondary full" data-action="close-modal">لاحقًا</button>`);
    }
   }).catch(e=>toast('التواصل السحابي غير متاح: '+e.message));
+  matchInvitesStart({
+   onIncoming:invite=>{
+    if(state.room){notifyPlayer('🎲 طلب تحدي من '+(invite.fromName||'لاعب'),{title:'دعوة سيجا'});return;}
+    notifyPlayer('🎲 '+(invite.fromName||'لاعب')+' طلب يلاعبك');
+    if(!$('#modal-root')?.firstChild)
+     openModal('🎲 طلب تحدي جديد',`<p>${esc(invite.fromName||'لاعب')} عايز يلعب معاك. تقبل ولا ترفض؟</p>
+      <button class="btn btn-mint full" data-action="match-accept" data-id="${esc(invite.id)}" data-code="${esc(invite.roomCode)}">✅ موافقة</button>
+      <button class="btn btn-secondary full" data-action="match-reject" data-id="${esc(invite.id)}">❌ رفض</button>`);
+   },
+   onUpdate:(incoming,outgoing)=>{
+    state.matchInvites=incoming;state.outgoingInvites=outgoing;
+    updateSocialBadge();if(state.tab==='social'&&!state.room&&state.socialMode==='friends')render();
+   },
+   onStatus:msg=>{if(msg.kind==='error')toast(msg.text);else notifyPlayer(msg.text);}
+  }).catch(e=>toast('دعوات المباراة تحتاج صلاحيات Firestore المحدثة: '+e.message));
   friendCallsStart({
    onIncoming:({id,uid})=>{
     state.pendingVoice={id,uid};
