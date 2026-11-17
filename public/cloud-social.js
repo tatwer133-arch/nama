@@ -2,7 +2,7 @@
 // Guests continue to play locally; no fake online users, friends, messages, or presence.
 import {firebaseSdk,firebaseReady} from './firebase-auth.js?v=11.1';
 export const cloudSocialAvailable=()=>firebaseReady();
-let publicName='لاعب سيجا',publicAvatar='🎮',publicPhoto=null,ctx=null,stopFns=[],presenceWatchers=new Map(),heartbeat=null,currentRoom=()=>null,onUpdate=()=>{},onNotice=()=>{},userId=null,profileCache=new Map();
+let publicName='لاعب سيجا',publicAvatar='🎮',publicPhoto=null,ctx=null,stopFns=[],presenceWatchers=new Map(),chatPresenceWatchers=new Map(),heartbeat=null,currentRoom=()=>null,onUpdate=()=>{},onNotice=()=>{},userId=null,profileCache=new Map();
 const sanitize=x=>String(x??'').trim();
 const cleanName=n=>sanitize(n).slice(0,24)||'لاعب سيجا';
 const cleanRoom=s=>/^[A-Z0-9]{6}$/.test(String(s||'').toUpperCase())?String(s).toUpperCase():'';
@@ -30,6 +30,26 @@ async function decoratePublic(messages){
   const author=profileCache.get(m.uid)||{};
   return {...m,name:author.name||cleanName(m.name),avatar:author.avatar||'🎮',photo:author.photo||null,online:author.online===true,activeRoom:author.activeRoom||''};
  });
+}
+function trackChatPresence(messages){
+ if(!ctx)return;
+ const {fs,db}=ctx;
+ const uids=[...new Set(messages.slice(-35).map(m=>m.uid).filter(x=>typeof x==='string'&&x.length<130))].slice(-15);
+ for(const [uid,stop] of chatPresenceWatchers)if(!uids.includes(uid)){try{stop();}catch{}chatPresenceWatchers.delete(uid);}
+ for(const uid of uids)if(!chatPresenceWatchers.has(uid)){
+  const stop=fs.onSnapshot(fs.doc(db,'presence',uid),snap=>{
+   if(!ctx)return;
+   const v=snap.exists()?snap.data():{},online=Date.now()-tm(v.lastSeen)<125000&&v.status!=='offline';
+   const known=profileCache.get(uid)||{at:Date.now(),avatar:'🎮',photo:null,name:'لاعب سيجا'};
+   known.online=online;known.activeRoom=cleanRoom(v.roomCode);profileCache.set(uid,known);
+   let changed=false;
+   for(const m of info.publicChat)if(m.uid===uid&&(m.online!==online||m.activeRoom!==known.activeRoom)){
+    m.online=online;m.activeRoom=known.activeRoom;changed=true;
+   }
+   if(changed)push();
+  },()=>{});
+  chatPresenceWatchers.set(uid,stop);
+ }
 }
 function dmSender(uid){
  if(uid===userId)return{name:publicName,avatar:publicAvatar,photo:publicPhoto};
@@ -118,7 +138,7 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
  subscribe(fs.query(fs.collection(db,'publicChat'),fs.orderBy('at','desc'),fs.limit(60)),snap=>{
   const version=++chatVersion;
   const messages=snap.docs.map(d=>({id:d.id,...d.data(),at:tm(d.data().at),uid:d.data().uid})).reverse();
-  decoratePublic(messages).then(list=>{if(version===chatVersion){info.publicChat=list;push();}}).catch(e=>onNotice({kind:'error',text:'تعذر تحميل صور الشات: '+e.message}));
+  decoratePublic(messages).then(list=>{if(version===chatVersion){info.publicChat=list;trackChatPresence(list);push();}}).catch(e=>onNotice({kind:'error',text:'تعذر تحميل صور الشات: '+e.message}));
  });
  const startup=Date.now(),seen=new Set();
  subscribe(fs.query(fs.collection(db,'inbox',userId,'items'),fs.orderBy('at','desc'),fs.limit(40)),snap=>{
@@ -135,7 +155,7 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
  return true;
 }
 export async function cloudSocialStop(){
- if(heartbeat)clearInterval(heartbeat);heartbeat=null;for(const f of stopFns.splice(0))try{f();}catch{}for(const f of presenceWatchers.values())try{f();}catch{}presenceWatchers.clear();
+ if(heartbeat)clearInterval(heartbeat);heartbeat=null;for(const f of stopFns.splice(0))try{f();}catch{}for(const f of presenceWatchers.values())try{f();}catch{}presenceWatchers.clear();for(const f of chatPresenceWatchers.values())try{f();}catch{}chatPresenceWatchers.clear();
  if(ctx&&userId){const {fs,db}=ctx;await fs.setDoc(fs.doc(db,'presence',userId),{status:'offline',roomCode:'',watchAllowed:false,lastSeen:fs.serverTimestamp()},{merge:true}).catch(()=>{});}
  ctx=null;userId=null;info.online=false;info.friends=[];info.requests=[];info.dm=[];info.dmOther=null;info.publicChat=[];info.inbox=[];info.unread=0;profileCache.clear();push();
 }
