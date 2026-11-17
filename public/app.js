@@ -1,9 +1,9 @@
 import {variantActions,chineseLayout,GAME_CATALOG} from './variants.js';
 import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js';
 import {mount3D,reset3D} from './scene3d.js?v=11.1';
-import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js';
-import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js';
-import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic} from './cloud-social.js';
+import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js?v=11.1';
+import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js?v=11.1';
+import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic} from './cloud-social.js?v=11.1';
 const $=sel=>document.querySelector(sel);
 const fmt=n=>new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(n??0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
