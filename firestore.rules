@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signed() {return request.auth != null;}
+    function own(uid) {return signed() && request.auth.uid == uid;}
+    function stringsUnder(d,k,max) {return d[k] is string && d[k].size() <= max;}
+    function friends(pair) {
+      return signed() && exists(/databases/$(database)/documents/friendRequests/$(pair))
+        && get(/databases/$(database)/documents/friendRequests/$(pair)).data.status == 'accepted'
+        && (get(/databases/$(database)/documents/friendRequests/$(pair)).data.fromUid == request.auth.uid
+            || get(/databases/$(database)/documents/friendRequests/$(pair)).data.toUid == request.auth.uid);
+    }
+    match /players/{uid} {
+      function validPlayer() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['ownerUid','id','name','avatar','photo','color','settings','updatedAt'])
+          && d.keys().hasAll(['ownerUid','id','name','avatar','color','settings','updatedAt'])
+          && d.ownerUid == uid && d.id is string && d.id.matches('^SG-[A-F0-9]{10}$')
+          && stringsUnder(d,'name',24) && stringsUnder(d,'avatar',32)
+          && (d.photo == null || stringsUnder(d,'photo',170000))
+          && d.color in ['ruby','ocean','sun','jade']
+          && d.settings is map && d.settings.keys().hasOnly(['sound','music','allowSpectators'])
+          && d.settings.sound is bool && d.settings.music is bool
+          && (!('allowSpectators' in d.settings) || d.settings.allowSpectators is bool)
+          && d.updatedAt is int;
+      }
+      allow get: if own(uid);
+      allow list: if false;
+      allow create: if own(uid) && validPlayer();
+      allow update: if own(uid) && validPlayer() && request.resource.data.id == resource.data.id;
+      allow delete: if own(uid);
+    }
+    match /directory/{uid} {
+      function valid() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['uid','id','name','avatar','photo','updatedAt'])
+          && d.keys().hasAll(['uid','id','name','avatar','photo','updatedAt'])
+          && d.uid == uid && d.id is string && d.id.matches('^SG-[A-F0-9]{10}$')
+          && stringsUnder(d,'name',24) && stringsUnder(d,'avatar',32)
+          && (d.photo == null || stringsUnder(d,'photo',170000))
+          && d.updatedAt == request.time;
+      }
+      allow get,list: if signed();
+      allow create: if own(uid) && valid();
+      allow update: if own(uid) && valid() && request.resource.data.id == resource.data.id;
+      allow delete: if own(uid);
+    }
+    match /emailIndex/{email} {
+      function valid() {
+        let d=request.resource.data;
+        return signed() && request.auth.token.email_verified == true
+          && request.auth.token.email.lower() == email
+          && d.keys().hasOnly(['uid','id','name']) && d.keys().hasAll(['uid','id','name'])
+          && d.uid == request.auth.uid && stringsUnder(d,'id',13) && stringsUnder(d,'name',24);
+      }
+      allow get: if signed();
+      allow list: if false;
+      allow create: if valid();
+      allow update: if valid() && resource.data.uid == request.auth.uid;
+      allow delete: if own(resource.data.uid);
+    }
+    match /friendRequests/{pairId} {
+      allow get,list: if signed() && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow create: if signed()
+        && request.resource.data.keys().hasOnly(['fromUid','toUid','status','at'])
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string && request.resource.data.toUid.size() <= 128
+        && request.resource.data.toUid != request.auth.uid
+        && (pairId == request.auth.uid + '__' + request.resource.data.toUid || pairId == request.resource.data.toUid + '__' + request.auth.uid)
+        && exists(/databases/$(database)/documents/directory/$(request.resource.data.toUid))
+        && request.resource.data.status == 'pending' && request.resource.data.at == request.time;
+      allow update: if signed() && resource.data.toUid == request.auth.uid && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['status'])
+        && request.resource.data.status in ['accepted','rejected'];
+      allow delete: if false;
+    }
+    match /presence/{uid} {
+      function valid() {
+        let d=request.resource.data;
+        return d.keys().hasOnly(['uid','status','roomCode','watchAllowed','lastSeen'])
+        && d.keys().hasAll(['uid','status','roomCode','watchAllowed','lastSeen'])
+        && d.uid == uid && d.status in ['online','offline','playing','watching']
+        && d.roomCode is string && d.roomCode.size() <= 6
+        && d.watchAllowed is bool && d.lastSeen == request.time;
+      }
+      allow get,list: if signed();
+      allow create,update: if own(uid) && valid();
+      allow delete: if own(uid);
+    }
+    match /publicChat/{messageId} {
+      allow get,list: if signed();
+      allow create: if signed() && request.resource.data.keys().hasOnly(['uid','kind','name','text','roomCode','at'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.kind in ['text','invite']
+        && stringsUnder(request.resource.data,'name',24)
+        && stringsUnder(request.resource.data,'text',180)
+        && request.resource.data.text.size() > 0
+        && stringsUnder(request.resource.data,'roomCode',6)
+        && request.resource.data.at == request.time;
+      allow update,delete: if false;
+    }
+    match /dmThreads/{pairId}/messages/{messageId} {
+      allow get,list: if friends(pairId);
+      allow create: if friends(pairId)
+        && request.resource.data.keys().hasOnly(['uid','text','at'])
+        && request.resource.data.uid == request.auth.uid
+        && stringsUnder(request.resource.data,'text',200)
+        && request.resource.data.text.size() > 0
+        && request.resource.data.at == request.time;
+      allow update,delete: if false;
+    }
+    match /inbox/{recipient}/items/{id} {
+      allow get,list: if own(recipient);
+      allow create: if signed() && friends(request.resource.data.pairId)
+        && request.resource.data.keys().hasOnly(['fromUid','kind','text','roomCode','read','at','pairId'])
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.kind in ['dm','invite','notice']
+        && request.resource.data.read == false
+        && request.resource.data.text is string && request.resource.data.text.size() <= 160
+        && request.resource.data.roomCode is string && request.resource.data.roomCode.size() <= 6
+        && request.resource.data.at == request.time
+        && recipient != request.auth.uid
+        && (get(/databases/$(database)/documents/friendRequests/$(request.resource.data.pairId)).data.fromUid == recipient
+            || get(/databases/$(database)/documents/friendRequests/$(request.resource.data.pairId)).data.toUid == recipient);
+      allow update: if own(recipient)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['read'])
+        && request.resource.data.read == true;
+      allow delete: if own(recipient);
+    }
+    match /{document=**} {allow read,write: if false;}
+  }
+}
