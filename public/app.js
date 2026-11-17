@@ -3,11 +3,12 @@ import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js
 import {mount3D,reset3D} from './scene3d.js?v=11.1';
 import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js?v=11.1';
 import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js?v=11.1';
-import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic} from './cloud-social.js?v=11.1';
+import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic,cloudGetPlayer,cloudSendPublicInvite} from './cloud-social.js?v=11.2';
+import {friendCallsStart,friendCallsStop,friendCallDial,friendCallAnswer,friendCallDecline,friendCallMute,friendCallHangup,friendPlayAudio} from './friend-call.js?v=11.2';
 const $=sel=>document.querySelector(sel);
 const fmt=n=>new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(n??0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={me:null,tab:'home',room:null,rooms:[],store:[],config:null,friends:[],ranking:[],search:[],world:[],socket:null,selected:null,authView:'login',socialMode:'friends',dmId:null,dmMessages:[],voice:false,localStream:null,peer:null,iceQueue:[],busy:false,boardSize:[3,5,7,9].includes(Number(localStorage.getItem('seega_board_size')))?Number(localStorage.getItem('seega_board_size')):5,gameMode:localStorage.getItem('seega_game_mode')||'seega5',boardTilt:true,chatOpen:false,rankFilter:'coins',captureFx:null,giftFx:null,giftMenuOpen:false,lastFxSeq:null,unreadRoom:0,voicePending:false,voiceConsent:false,spectatorApproved:false,cloud:{online:false,friends:[],requests:[],inbox:[],publicChat:[],dm:[]},cloudSearch:null};
+const state={me:null,tab:'home',room:null,rooms:[],store:[],config:null,friends:[],ranking:[],search:[],world:[],socket:null,selected:null,authView:'login',socialMode:'friends',dmId:null,dmMessages:[],voice:false,localStream:null,peer:null,iceQueue:[],busy:false,boardSize:[3,5,7,9].includes(Number(localStorage.getItem('seega_board_size')))?Number(localStorage.getItem('seega_board_size')):5,gameMode:localStorage.getItem('seega_game_mode')||'seega5',boardTilt:true,chatOpen:false,rankFilter:'coins',captureFx:null,giftFx:null,giftMenuOpen:false,lastFxSeq:null,unreadRoom:0,voicePending:false,voiceConsent:false,spectatorApproved:false,cloud:{online:false,friends:[],requests:[],inbox:[],publicChat:[],dm:[]},cloudSearch:null,friendVoice:null,pendingVoice:null};
 let toastTimer=null;
 function toast(m){const el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100);}
 async function api(path,options={}){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},credentials:'same-origin',...options});let data;try{data=await r.json();}catch{data={};}if(!r.ok)throw Error(data.error||'حصلت مشكلة في الاتصال');return data;}
@@ -37,6 +38,26 @@ function notifyPlayer(message,{title='سيجا رويال',vibrate=true}={}){
  if(document.hidden&&'Notification' in window&&Notification.permission==='granted'){
   try{const n=new Notification(title,{body:message,icon:'/icon.svg',tag:'seega-alert'});n.onclick=()=>{window.focus();n.close();};}catch(e){console.info('Browser notification unavailable');}
  }
+}
+function updateSocialBadge(){
+ const nav=document.querySelector('#nav [data-tab="social"]');if(!nav)return;
+ const n=state.cloud?.online?Number(state.cloud.unread||0):0;
+ let badge=nav.querySelector('.social-alert-badge');
+ if(!n){badge?.remove();return;}
+ if(!badge){badge=document.createElement('span');badge.className='social-alert-badge';badge.setAttribute('aria-label','تنبيهات الصحاب');nav.append(badge);}
+ badge.textContent=n>99?'99+':String(n);
+}
+function updateFriendVoiceBar(){
+ let root=document.getElementById('friend-call-banner');
+ if(!root){root=document.createElement('div');root.id='friend-call-banner';document.body.append(root);}
+ const call=state.friendVoice;
+ if(!call?.active){root.innerHTML='';root.classList.remove('visible');return;}
+ const status=call.status==='ringing'?'جاري الاتصال':call.status==='connected'?'مكالمة صوتية متصلة':'جاري توصيل الصوت';
+ root.classList.add('visible');
+ root.innerHTML=`<div class="friend-call-label"><b>📞 ${esc(call.name)}</b><small>${status}</small></div><div class="friend-call-buttons">
+ <button data-action="friend-mute" ${call.status==='ringing'?'disabled':''} class="btn btn-secondary">${call.muted?'🎤 فتح المايك':'🔇 كتم المايك'}</button>
+ <button data-action="friend-play" class="btn btn-secondary" aria-label="تشغيل صوت المكالمة">🔊</button>
+ <button data-action="friend-hangup" class="btn btn-primary" aria-label="إنهاء المكالمة">📴 إنهاء</button></div>`;
 }
 function updateChatBadge(){const fab=$('.chat-fab');if(!fab)return;fab.classList.toggle('has-unread',state.unreadRoom>0&&!state.chatOpen);
  const badge=fab.querySelector('.chat-unread');if(badge)badge.textContent=String(Math.min(state.unreadRoom,99));}
@@ -178,7 +199,15 @@ function searchSection(){return `<div class="demo-banner">🪪 حفظ الـID �
  <p class="muted">انسخ رقم صاحبك من صفحته واحفظه عندك. الحفظ مش بيبعت طلب صداقة فعلي.</p>`;}
 function friendsSection(){return `<div class="section-head" style="margin-top:4px"><h3>معرّفات أصحابك المحفوظة</h3><button class="mini-link" data-action="friends-refresh">تحديث ↻</button></div>
  ${state.friends.length?`<div class="friend-list">${state.friends.map(f=>`<div class="list-row">${avatar(f.user)}<div class="row-main"><strong>${esc(f.user.name)}</strong><small>${esc(f.user.id)} · محفوظ محليًا فقط</small></div><span class="pill">🪪</span></div>`).join('')}</div>`:`<div class="empty-state"><span class="big">🤝</span>لسه مفيش معرّفات محفوظة.<br>اكتب ID صاحبك في البحث علشان تحتفظ بيه.</div>`}`;}
-function messageMarkup(m,isDm=false){const mine=[state.me.id,state.me.firebaseUid].includes(m.uid||m.sender);if(m.kind==='gift')return `<div class="msg gift-chat-bubble ${mine?'me':''}" aria-label="هدية مرسلة"><span class="gift-chat-emoji" aria-label="${esc(m.giftName||'هدية')}">${esc(m.emoji||'🎁')}</span></div>`;return `<div class="msg ${mine?'me':''}"><span class="msg-ava">${esc(m.avatar||(mine?state.me.avatar:'💬'))}</span><div class="msg-box"><b>${esc(isDm?(mine?'إنت':'صاحبك'):(m.name||'لاعب'))}</b><span>${esc(m.text||m.body)}</span></div></div>`;}
+function messageMarkup(m,isDm=false){
+ const mine=[state.me.id,state.me.firebaseUid].includes(m.uid||m.sender);
+ if(m.kind==='gift')return `<div class="msg gift-chat-bubble ${mine?'me':''}" aria-label="هدية مرسلة"><span class="gift-chat-emoji" aria-label="${esc(m.giftName||'هدية')}">${esc(m.emoji||'🎁')}</span></div>`;
+ const uid=m.uid||m.sender,isPublic=!isDm&&state.cloud?.online&&state.socialMode==='world';
+ const user={name:m.name||(mine?state.me.name:'لاعب'),avatar:m.avatar||(mine?state.me.avatar:'💬'),photo:m.photo||(mine?state.me.photo:null)};
+ const person=isPublic&&!mine?`<button type="button" class="chat-person" data-action="cloud-profile" data-uid="${esc(uid)}" title="عرض بروفايل اللاعب">${avatar(user)}<b>${esc(user.name)}</b></button>`
+ :`<span class="chat-person">${avatar(user)}<b>${esc(user.name)}</b></span>`;
+ return `<div class="msg ${mine?'me':''}"><div class="msg-person">${person}${isPublic?`<small class="chat-presence ${m.online?'yes':''}">${m.online?'🟢 متصل':'⚫ غير متصل'}</small>`:''}</div><div class="msg-box"><span>${esc(m.text||m.body||'')}</span>${isPublic&&!mine&&m.online?`<button class="chat-challenge" data-action="cloud-challenge" data-uid="${esc(uid)}">🎲 تحداه</button>`:''}</div></div>`;
+}
 function worldSection(){return `<div class="card"><div class="section-head" style="margin:0 0 10px"><h3>🌍 الشات العام</h3><span><i class="neon-dot"></i> مباشر</span></div><div class="world-messages" id="world-messages">${state.world.length?state.world.map(m=>messageMarkup(m)).join(''):'<div class="muted">ابدأ أنت السلام على الناس 👋</div>'}</div><form class="send-row" id="world-form"><input class="chat-input" id="world-input" maxlength="150" placeholder="اكتب رسالة لطيفة..." required><button class="btn btn-primary" type="submit">إرسال</button></form></div>`;}
 function dmSection(){const friend=state.friends.find(f=>f.user.id===state.dmId)?.user;return `<button class="btn btn-secondary" data-action="dm-back" style="margin-bottom:12px">← رجوع</button><h3>${avatar(friend)} محادثة مع ${esc(friend?.name||'لاعب')}</h3><div class="world-messages" id="dm-messages">${state.dmMessages.map(m=>messageMarkup(m,true)).join('')}</div><form class="send-row" id="dm-form"><input class="chat-input" id="dm-input" maxlength="500" placeholder="رسالتك..." required><button class="btn btn-primary" type="submit">إرسال</button></form>`;}
 function renderCloudSocial(){const cloud=state.cloud||{},friends=cloud.friends||[],requests=cloud.requests||[],chat=cloud.publicChat||[];
@@ -277,7 +306,7 @@ function renderRoom(){
  <div class="room-actions"><button class="btn btn-secondary" data-action="rules">📜 القواعد</button><button class="btn btn-secondary" data-action="toggle-music">${state.me?.settings?.music?'🎵 إيقاف الموسيقى':'🎶 موسيقى'}</button><button class="btn btn-secondary" data-action="toggle-sound">${state.me?.settings?.sound!==false?'🔊':'🔇'}</button></div>
  ${floatingChat()}`;
 }
-function render(){if(!state.me)return;wallet();if(!state.room)reset3D();const main=$('#main');main.innerHTML=state.room?renderRoom():state.tab==='home'?renderHome():state.tab==='rooms'?renderRooms():state.tab==='store'?renderStore():state.tab==='social'?renderSocial():state.tab==='profile'?renderProfile():state.tab==='ranking'?renderRanking():renderHome();$('#nav').classList.toggle('hidden',!!state.room);$('#topbar').classList.toggle('hidden',!!state.room);const chats=['#world-messages','#room-messages','#dm-messages'];for(const id of chats){const el=$(id);if(el)el.scrollTop=el.scrollHeight;}if(state.room)mount3D(state.room);updateChatBadge();}
+function render(){if(!state.me)return;wallet();if(!state.room)reset3D();const main=$('#main');main.innerHTML=state.room?renderRoom():state.tab==='home'?renderHome():state.tab==='rooms'?renderRooms():state.tab==='store'?renderStore():state.tab==='social'?renderSocial():state.tab==='profile'?renderProfile():state.tab==='ranking'?renderRanking():renderHome();$('#nav').classList.toggle('hidden',!!state.room);$('#topbar').classList.toggle('hidden',!!state.room);const chats=['#world-messages','#room-messages','#dm-messages'];for(const id of chats){const el=$(id);if(el)el.scrollTop=el.scrollHeight;}if(state.room)mount3D(state.room);updateChatBadge();updateSocialBadge();updateFriendVoiceBar();}
 async function refresh(tab){try{if(tab==='rooms'){state.rooms=(await api('/rooms')).rooms;}if(tab==='store'){state.store=(await api('/store')).items;}if(tab==='social'&&!state.cloud?.online){state.friends=(await api('/friends')).friends;}if(tab==='ranking'){state.ranking=(await api('/leaderboard')).users;}}catch(e){toast(e.message);}render();}
 function startSocket(){if(state.socket){state.socket.disconnect();}const s=state.socket=io({transports:['websocket','polling']});s.on('connect_error',()=>toast('الشات المباشر غير متصل. حاول تحدّث الصفحة.'));
  s.on('room:update',r=>{
