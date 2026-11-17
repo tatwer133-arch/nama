@@ -1,7 +1,7 @@
 // Opt-in real cloud account/profile sync. Requires a Firebase project and restrictive Firestore rules.
 // Firestore is NOT an authoritative currency or ranking backend. Only profile metadata is uploaded.
-import {firebaseSdk,firebaseReady} from './firebase-auth.js?v=11.1';
-import {firebaseConfig} from './firebase-config.js?v=11.1';
+import {firebaseSdk,firebaseReady} from './firebase-auth.js?v=11.2';
+import {firebaseConfig} from './firebase-config.js?v=11.2';
 let dbInit=null;
 async function client(){
  if(!firebaseReady())throw Error('لا يوجد مشروع Firebase مرتبط');
