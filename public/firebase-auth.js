@@ -1,4 +1,4 @@
-import {firebaseConfig} from './firebase-config.js?v=11.3';
+import {firebaseConfig} from './firebase-config.js?v=11.4';
 export const firebaseReady=()=>Boolean(firebaseConfig?.apiKey&&firebaseConfig?.authDomain&&firebaseConfig?.projectId&&firebaseConfig?.appId);
 let authInit=null;
 export async function firebaseSdk(){
