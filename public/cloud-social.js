@@ -1,6 +1,6 @@
 // Realtime social service. Activated ONLY with a real Firebase project, Authentication and Firestore rules.
 // Guests continue to play locally; no fake online users, friends, messages, or presence.
-import {firebaseSdk,firebaseReady} from './firebase-auth.js?v=11.2';
+import {firebaseSdk,firebaseReady} from './firebase-auth.js?v=11.3';
 export const cloudSocialAvailable=()=>firebaseReady();
 let publicName='لاعب سيجا',publicAvatar='🎮',publicPhoto=null,ctx=null,stopFns=[],presenceWatchers=new Map(),chatPresenceWatchers=new Map(),heartbeat=null,currentRoom=()=>null,onUpdate=()=>{},onNotice=()=>{},userId=null,profileCache=new Map();
 const sanitize=x=>String(x??'').trim();
