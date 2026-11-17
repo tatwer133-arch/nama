@@ -94,8 +94,8 @@ test('source applies low-overhead shader, LOD, GPU caching and cache v7',()=>{
  const app=readFileSync(new URL('./public/app.js',import.meta.url),'utf8');
  assert.match(scene,/const boardCache=new Map\(\)/);
  assert.match(scene,/r\.baseKey!==key/);
- assert.match(scene,/n>=9\?12:n>=7\?16:22/);
- assert.match(scene,/lowEnd\?30:45/);
+ assert.match(scene,/n>=9\?14:n>=7\?20:30/);
+ assert.match(scene,/lowEnd\?30:50/);
  assert.match(scene,/gl\.STATIC_DRAW/);
  assert.match(scene,/r\.piecesKey!==piecesKey/);
  assert.match(scene,/const pieceTemplates=new Map\(\)/);
