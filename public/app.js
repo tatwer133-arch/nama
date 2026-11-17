@@ -1,6 +1,6 @@
 import {variantActions,chineseLayout,GAME_CATALOG} from './variants.js';
 import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js';
-import {mount3D,reset3D} from './scene3d.js?v=11';
+import {mount3D,reset3D} from './scene3d.js?v=11.1';
 import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js';
 import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js';
 import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic} from './cloud-social.js';
@@ -14,8 +14,8 @@ async function api(path,options={}){const r=await fetch('/api'+path,{headers:{'C
 const post=(path,data={})=>api(path,{method:'POST',body:JSON.stringify(data)});
 const patch=async(path,data={})=>{
  const out=await api(path,{method:'PATCH',body:JSON.stringify(data)});
- if(path==='/me'&&firebaseReady()&&out.user){
-  cloudUpdate(out.user).then(()=>cloudPublicProfile(out.user)).catch(e=>toast('اتحفظ محليًا، لكن مزامنة ملفك السحابي فشلت: '+e.message));
+ if(path==='/me'&&firebaseReady()&&out.user?.firebaseUid){
+  cloudUpdate(out.user).then(ok=>ok?cloudPublicProfile(out.user):null).catch(e=>toast('اتحفظ محليًا، لكن مزامنة ملفك السحابي فشلت: '+e.message));
  }
  return out;
 };
@@ -518,7 +518,7 @@ $('#guest-login').addEventListener('click',async()=>{unlockAudio();try{if(fireba
 $('#google-login').addEventListener('click',async()=>{unlockAudio();try{const profile=await firebaseSignIn('google');const r=await post('/auth/federated',profile);await authReady(r.user);}catch(e){toast(e.message);}});
 $('#facebook-login').addEventListener('click',async()=>{unlockAudio();try{const profile=await firebaseSignIn('facebook');const r=await post('/auth/federated',profile);await authReady(r.user);}catch(e){toast(e.message);}});
 document.addEventListener('pointerdown',()=>{unlockGiftAudio();unlockAudio();if(state.me?.settings?.music)startMusic();},{capture:true,passive:true});
-(async function boot(){try{if(firebaseReady()){const note=$('.auth-local-notice');if(note)note.textContent='☁️ تسجيل جوجل يحتاج تفعيل Google في Firebase وAuthorized domains. الحسابات الحقيقية ممكن تدخل، لكن مزامنة الصورة والـ ID والأصدقاء لا تعمل قبل إنشاء Firestore ونشر قواعد الحماية. العملات والترتيب محليان.';}state.config=await api('/config');state.store=state.config.items;const r=await api('/me');if(r.user){
+(async function boot(){try{if(firebaseReady()){const note=$('.auth-local-notice');if(note)note.textContent='☁️ حساب Firebase يفعّل الصورة والـ ID والأصدقاء والشات عند جاهزية Firestore وقواعد الأمان. الكوينز والترتيب محليان. يمكنك تجربة الحساب بين جهازين.';}state.config=await api('/config');state.store=state.config.items;const r=await api('/me');if(r.user){
   if(firebaseReady()){
    const cloud=await firebaseCurrent();
    if(cloud?.uid&&cloud.uid!==r.user.firebaseUid){
