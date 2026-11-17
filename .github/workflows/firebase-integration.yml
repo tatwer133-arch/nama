@@ -1,0 +1,36 @@
+name: Seega Royale Firebase security integration QA
+on:
+  push:
+    branches:
+      - seega-royale-v11
+    paths:
+      - 'firestore.rules'
+      - 'qa/**'
+      - 'package.json'
+      - '.github/workflows/firebase-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firestore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Java 21 for Firestore emulator
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install test and Firebase emulator dependencies
+        run: npm install --no-audit --no-fund
+      - name: Test real Firestore permission decisions
+        run: npm run test:rules
