@@ -41,5 +41,5 @@ test('reuses WebGL context between game turns for mobile stability',()=>{
 test('cache-busted v6 assets are used in production',()=>{
  assert.match(html,/styles\.css\?v=(?:[89]|1[01])/);
  assert.match(html,/offline-adapter\.js\?v=(?:[89]|1[01])/);
- assert.match(get('./public/offline-adapter.js'),/await import\('\.\/app\.js\?v=11(?:\.[123])?'\)/);
+ assert.match(get('./public/offline-adapter.js'),/await import\('\.\/app\.js\?v=11(?:\.[1234])?'\)/);
 });
