@@ -79,6 +79,19 @@ test('Chromium: real mobile UI, guest login, bot turns, navigation, and responsi
   assert.deepEqual(pageErrors,[]);
   await page.close();
  });
+ await t.test('rose gift arrives gently beside opponent without face-splat effect',async()=>{
+  const {page,pageErrors}=await openGuest({width:390,height:844});
+  await page.locator('[data-action="bot"]').first().click();
+  await page.locator('[data-action="open-gifts"]').first().waitFor({state:'visible'});
+  await page.locator('[data-action="open-gifts"]').first().click();
+  await page.locator('[data-action="send-gift"][data-gift="rose"]').click();
+  await page.locator('.flying-gift--gentle').waitFor({state:'visible',timeout:6000});
+  await page.waitForTimeout(1350);
+  assert.equal(await page.locator('.duel-avatar .avatar-icon.gift-impact').count(),0);
+  await page.screenshot({path:'qa-artifacts/mobile-gentle-rose.png',fullPage:true});
+  assert.deepEqual(pageErrors,[]);
+  await page.close();
+ });
  await t.test('navigation, profile editing and guest social controls are accessible',async()=>{
   const {page,pageErrors}=await openGuest({width:390,height:844});
   await page.locator('#nav [data-tab="social"]').click();
