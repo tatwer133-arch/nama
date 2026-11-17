@@ -1,0 +1,51 @@
+name: Seega Royale V11.4 release QA
+on:
+  push:
+    branches:
+      - seega-royale-v11
+    paths:
+      - '.github/workflows/seega-v114-release-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Static syntax and legacy regression
+        run: |
+          node --check public/app.js
+          node --check public/cloud-social.js
+          node --check public/friend-call.js
+          node --check public/scene3d.js
+          node --check public/offline-adapter.js
+          node --test tests*.mjs
+      - name: Install integration tooling
+        run: npm install --no-audit --no-fund
+      - name: Firestore permission and voice-fallback integration
+        run: npm run test:rules
+      - name: Install Chromium browser
+        run: npx playwright install chromium --with-deps
+      - name: Android + desktop + gift animation end-to-end
+        run: npm run test:browser
+      - name: Save screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seega-v114-release-screenshots
+          path: qa-artifacts
+          if-no-files-found: ignore
+          retention-days: 14
