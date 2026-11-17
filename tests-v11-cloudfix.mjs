@@ -37,12 +37,12 @@ test('guest profile editing does not trigger cloud account operations',()=>{
 });
 
 test('all changed modules and HTML use cache-busted V11.1 imports',()=>{
- assert.match(html,/styles\.css\?v=11\.[12]/);
- assert.match(html,/offline-adapter\.js\?v=11\.[12]/);
- assert.match(adapter,/app\.js\?v=11\.[12]/);
- assert.match(app,/cloud-social\.js\?v=11\.[12]/);
- assert.match(app,/cloud-profile\.js\?v=11\.[12]/);
- assert.match(social,/firebase-auth\.js\?v=11\.[12]/);
+ assert.match(html,/styles\.css\?v=11\.[123]/);
+ assert.match(html,/offline-adapter\.js\?v=11\.[123]/);
+ assert.match(adapter,/app\.js\?v=11\.[123]/);
+ assert.match(app,/cloud-social\.js\?v=11\.[123]/);
+ assert.match(app,/cloud-profile\.js\?v=11\.[123]/);
+ assert.match(social,/firebase-auth\.js\?v=11\.[123]/);
 });
 
 test('private player data is protected by explicit default-deny rules',()=>{
