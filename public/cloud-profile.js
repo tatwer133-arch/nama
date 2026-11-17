@@ -10,7 +10,7 @@ async function client(){
   const mod=await import('https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js');
   const {getApp}=await import('https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js');
   return {auth,mod,db:mod.getFirestore(getApp())};
- })();return dbInit;
+ })().catch(err=>{dbInit=null;throw err;});return dbInit;
 }
 async function stableId(uid){const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(uid));
  return 'SG-'+Array.from(new Uint8Array(bytes).slice(0,5),x=>x.toString(16).padStart(2,'0')).join('').toUpperCase();}
