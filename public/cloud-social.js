@@ -107,12 +107,12 @@ export async function cloudPublicProfile(local){const {auth,fs,db}=await init();
   // until the project owner publishes the new rules, rather than locking users out.
   const {nameLower,...legacy}=publicData;
   await fs.setDoc(fs.doc(db,'directory',uid),legacy,{merge:true});
-  onNotice({kind:'error',text:'بحث الأسماء الجديد ومكالمات الأصدقاء يحتاجوا نشر قواعد Firestore المحدثة.'});
+  onNotice({kind:'setup',text:'بحث الأسماء والمكالمات تحتاج تحديث قواعد Firestore.'});
  }
  // Email lookup is bound by Firestore rules to the email in this user's Firebase Auth token.
  const email=auth.currentUser.email?.trim().toLowerCase();
  if(email&&email.length<160)await fs.setDoc(fs.doc(db,'emailIndex',email),{uid,id:publicData.id,name:publicData.name},{merge:true}).catch(e=>{
-  if(e?.code==='permission-denied')onNotice({kind:'error',text:'ظهور الحساب في بحث الإيميل يحتاج نشر قواعد Firestore الجديدة أو تأكيد البريد الإلكتروني.'});
+  if(e?.code==='permission-denied')onNotice({kind:'setup',text:'بحث الإيميل يحتاج قواعد Firestore المحدثة أو تأكيد الإيميل.'});
   else throw e;
  });
 }
@@ -124,10 +124,10 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
  info.online=true;push();await cloudPresence();
  const q1=fs.query(fs.collection(db,'friendRequests'),fs.where('fromUid','==',userId));
  const q2=fs.query(fs.collection(db,'friendRequests'),fs.where('toUid','==',userId));
- subscribe(q1,()=>refreshFriends().catch(e=>onNotice({kind:'error',text:e.message})));
+ subscribe(q1,()=>refreshFriends().catch(e=>onNotice({kind:'setup',text:'تعذر تحديث قائمة الأصدقاء: '+e.message})));
  const requestStart=Date.now(),seenRequests=new Set();
  subscribe(q2,snap=>{
-  refreshFriends().catch(e=>onNotice({kind:'error',text:e.message}));
+  refreshFriends().catch(e=>onNotice({kind:'setup',text:'تعذر تحديث قائمة الأصدقاء: '+e.message}));
   for(const change of snap.docChanges()){
    const data=change.doc.data(),id=change.doc.id;
    if(change.type==='added'&&data.status==='pending'&&tm(data.at)>=requestStart-8000&&!seenRequests.has(id)){
@@ -139,16 +139,22 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
  subscribe(fs.query(fs.collection(db,'publicChat'),fs.orderBy('at','desc'),fs.limit(60)),snap=>{
   const version=++chatVersion;
   const messages=snap.docs.map(d=>({id:d.id,...d.data(),at:tm(d.data().at),uid:d.data().uid})).reverse();
-  decoratePublic(messages).then(list=>{if(version===chatVersion){info.publicChat=list;trackChatPresence(list);push();}}).catch(e=>onNotice({kind:'error',text:'تعذر تحميل صور الشات: '+e.message}));
+  decoratePublic(messages).then(list=>{if(version===chatVersion){info.publicChat=list;trackChatPresence(list);push();}}).catch(e=>onNotice({kind:'setup',text:'تعذر تحميل صور الشات: '+e.message}));
  });
- const startup=Date.now(),seen=new Set();
+ const startup=Date.now(),seen=new Set();let inboxInitial=true;
  subscribe(fs.query(fs.collection(db,'inbox',userId,'items'),fs.orderBy('at','desc'),fs.limit(40)),snap=>{
-  info.inbox=snap.docs.map(d=>({id:d.id,...d.data(),at:tm(d.data().at)}));push();
+  info.inbox=snap.docs.filter(d=>!String(d.data().text||'').startsWith('VOICE_V1|')).map(d=>({id:d.id,...d.data(),at:tm(d.data().at)}));push();
   if(info.dmOther)cloudMarkDirectRead(info.dmOther).catch(()=>{});
+  if(inboxInitial){inboxInitial=false;return;} // Show unread badges, not popups for old messages on page load.
   for(const change of snap.docChanges()){
    const data=change.doc.data(),at=tm(data.at),id=change.doc.id;
    if(change.type==='added'&&!data.read&&at>=startup-8000&&!seen.has(id)){
-    seen.add(id);onNotice({kind:data.kind||'invite',text:data.text||'وصلك إشعار جديد',roomCode:cleanRoom(data.roomCode),id,fromUid:data.fromUid});
+    seen.add(id);
+    if(String(data.text||'').startsWith('VOICE_V1|'))continue; // Private signaling; never show raw control messages.
+    if(data.kind==='dm'&&data.fromUid===info.dmOther){
+      cloudMarkDirectRead(data.fromUid).catch(()=>{});continue;
+    }
+    onNotice({kind:data.kind||'invite',text:data.text||'وصلك إشعار جديد',roomCode:cleanRoom(data.roomCode),id,fromUid:data.fromUid});
    }
   }
  });
