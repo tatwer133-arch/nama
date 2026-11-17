@@ -2,15 +2,40 @@
 // Guests continue to play locally; no fake online users, friends, messages, or presence.
 import {firebaseSdk,firebaseReady} from './firebase-auth.js?v=11.1';
 export const cloudSocialAvailable=()=>firebaseReady();
-let publicName='لاعب سيجا',ctx=null,stopFns=[],presenceWatchers=new Map(),heartbeat=null,currentRoom=()=>null,onUpdate=()=>{},onNotice=()=>{},userId=null;
+let publicName='لاعب سيجا',publicAvatar='🎮',publicPhoto=null,ctx=null,stopFns=[],presenceWatchers=new Map(),heartbeat=null,currentRoom=()=>null,onUpdate=()=>{},onNotice=()=>{},userId=null,profileCache=new Map();
 const sanitize=x=>String(x??'').trim();
 const cleanName=n=>sanitize(n).slice(0,24)||'لاعب سيجا';
 const cleanRoom=s=>/^[A-Z0-9]{6}$/.test(String(s||'').toUpperCase())?String(s).toUpperCase():'';
 const validID=s=>/^SG-[A-F0-9]{10}$/.test(String(s||'').toUpperCase());
 const rawPhoto=x=>typeof x==='string'&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(x)&&x.length<170000?x:null;
 const tm=x=>x?.toMillis?.()||0;
-const info={friends:[],requests:[],publicChat:[],inbox:[],dm:[],dmOther:null,online:false};
-function push(){onUpdate({...info, friends:info.friends.map(x=>({...x})),requests:[...info.requests],publicChat:[...info.publicChat],inbox:[...info.inbox],dm:[...info.dm]});}
+const info={friends:[],requests:[],publicChat:[],inbox:[],dm:[],dmOther:null,online:false,unread:0};
+function push(){
+ info.unread=info.requests.length+info.inbox.filter(x=>!x.read&&x.kind==='dm').length;
+ onUpdate({...info,friends:info.friends.map(x=>({...x})),requests:[...info.requests],publicChat:[...info.publicChat],inbox:[...info.inbox],dm:[...info.dm]});
+}
+async function decoratePublic(messages){
+ const {fs,db}=ctx,now=Date.now();
+ const uids=[...new Set(messages.map(x=>x.uid).filter(x=>typeof x==='string'&&x.length<130))].slice(0,60);
+ await Promise.all(uids.map(async uid=>{
+  const hit=profileCache.get(uid);
+  if(hit&&now-hit.at<30000)return;
+  try{
+   const [doc,pres]=await Promise.all([fs.getDoc(fs.doc(db,'directory',uid)),fs.getDoc(fs.doc(db,'presence',uid))]);
+   const p=doc.exists()?doc.data():{},v=pres.exists()?pres.data():{};
+   profileCache.set(uid,{at:now,name:cleanName(p.name),avatar:p.avatar||'🎮',photo:rawPhoto(p.photo),online:now-tm(v.lastSeen)<125000&&v.status!=='offline',activeRoom:cleanRoom(v.roomCode)});
+  }catch{if(!hit)profileCache.set(uid,{at:now,name:'لاعب سيجا',avatar:'🎮',photo:null,online:false,activeRoom:''});}
+ }));
+ return messages.map(m=>{
+  const author=profileCache.get(m.uid)||{};
+  return {...m,name:author.name||cleanName(m.name),avatar:author.avatar||'🎮',photo:author.photo||null,online:author.online===true,activeRoom:author.activeRoom||''};
+ });
+}
+function dmSender(uid){
+ if(uid===userId)return{name:publicName,avatar:publicAvatar,photo:publicPhoto};
+ const f=info.friends.find(x=>x.uid===uid)?.user;
+ return{name:f?.name||'صاحبك',avatar:f?.avatar||'🎮',photo:rawPhoto(f?.photo)};
+}
 async function init(){if(ctx)return ctx;if(!firebaseReady())throw Error('المشروع مش مربوط بـ Firebase');
  const {auth}=await firebaseSdk();await auth.authStateReady?.();if(!auth.currentUser?.uid)throw Error('سجّل بحساب حقيقي علشان تستخدم الأصدقاء والشات');
  const fs=await import('https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js');
@@ -52,11 +77,12 @@ export async function cloudPresence(){if(!ctx||!userId)return false;
  await fs.setDoc(fs.doc(db,'presence',userId),{uid:userId,...obj,lastSeen:fs.serverTimestamp()},{merge:true});return true;
 }
 export async function cloudPublicProfile(local){const {auth,fs,db}=await init();const uid=auth.currentUser.uid;
- publicName=cleanName(local.name);const publicData={uid,id:validID(local.id)?local.id:'',name:publicName,avatar:sanitize(local.avatar).slice(0,8)||'🎮',photo:rawPhoto(local.photo),updatedAt:fs.serverTimestamp()};
+ publicName=cleanName(local.name);publicAvatar=sanitize(local.avatar).slice(0,8)||'🎮';publicPhoto=rawPhoto(local.photo);
+ const publicData={uid,id:validID(local.id)?local.id:'',name:publicName,nameLower:publicName.toLocaleLowerCase().normalize('NFKC'),avatar:publicAvatar,photo:publicPhoto,updatedAt:fs.serverTimestamp()};
  await fs.setDoc(fs.doc(db,'directory',uid),publicData,{merge:true});
- // Email discovery is opt-in to a verified email; unverified emails cannot claim somebody else's identity.
+ // Email lookup is bound by Firestore rules to the email in this user's Firebase Auth token.
  const email=auth.currentUser.email?.trim().toLowerCase();
- if(email&&auth.currentUser.emailVerified&&email.length<160)await fs.setDoc(fs.doc(db,'emailIndex',email),{uid,id:publicData.id,name:publicData.name},{merge:true});
+ if(email&&email.length<160)await fs.setDoc(fs.doc(db,'emailIndex',email),{uid,id:publicData.id,name:publicData.name},{merge:true});
 }
 export async function cloudSocialStart(profile,roomGetter,update,notify){
  if(!firebaseReady())return false;
@@ -68,8 +94,11 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
  const q2=fs.query(fs.collection(db,'friendRequests'),fs.where('toUid','==',userId));
  subscribe(q1,()=>refreshFriends().catch(e=>onNotice({kind:'error',text:e.message})));
  subscribe(q2,()=>refreshFriends().catch(e=>onNotice({kind:'error',text:e.message})));
+ let chatVersion=0;
  subscribe(fs.query(fs.collection(db,'publicChat'),fs.orderBy('at','desc'),fs.limit(60)),snap=>{
-  info.publicChat=snap.docs.map(d=>({id:d.id,...d.data(),at:tm(d.data().at),uid:d.data().uid})).reverse();push();
+  const version=++chatVersion;
+  const messages=snap.docs.map(d=>({id:d.id,...d.data(),at:tm(d.data().at),uid:d.data().uid})).reverse();
+  decoratePublic(messages).then(list=>{if(version===chatVersion){info.publicChat=list;push();}}).catch(e=>onNotice({kind:'error',text:'تعذر تحميل صور الشات: '+e.message}));
  });
  const startup=Date.now(),seen=new Set();
  subscribe(fs.query(fs.collection(db,'inbox',userId,'items'),fs.orderBy('at','desc'),fs.limit(40)),snap=>{
@@ -87,19 +116,28 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
 export async function cloudSocialStop(){
  if(heartbeat)clearInterval(heartbeat);heartbeat=null;for(const f of stopFns.splice(0))try{f();}catch{}for(const f of presenceWatchers.values())try{f();}catch{}presenceWatchers.clear();
  if(ctx&&userId){const {fs,db}=ctx;await fs.setDoc(fs.doc(db,'presence',userId),{status:'offline',roomCode:'',watchAllowed:false,lastSeen:fs.serverTimestamp()},{merge:true}).catch(()=>{});}
- ctx=null;userId=null;info.online=false;info.friends=[];info.requests=[];info.dm=[];info.dmOther=null;info.publicChat=[];info.inbox=[];
+ ctx=null;userId=null;info.online=false;info.friends=[];info.requests=[];info.dm=[];info.dmOther=null;info.publicChat=[];info.inbox=[];info.unread=0;profileCache.clear();push();
 }
-export async function cloudSearchPlayer(s){const {fs,db}=await init();const term=sanitize(s);let doc=null;
+export async function cloudSearchPlayer(s){
+ const {fs,db}=await init(),term=sanitize(s);let docs=[];
  if(validID(term)){
-  const res=await fs.getDocs(fs.query(fs.collection(db,'directory'),fs.where('id','==',term.toUpperCase()),fs.limit(1)));
-  doc=res.docs[0];
+  const snap=await fs.getDocs(fs.query(fs.collection(db,'directory'),fs.where('id','==',term.toUpperCase()),fs.limit(1)));docs=snap.docs;
  }else if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(term)){
   const idx=await fs.getDoc(fs.doc(db,'emailIndex',term.toLowerCase()));
-  if(idx.exists())doc=await fs.getDoc(fs.doc(db,'directory',idx.data().uid));
- }else throw Error('اكتب ID بالشكل SG-XXXXXXXXXX أو إيميل صحيح');
- if(!doc?.exists?.())throw Error('مفيش حساب مؤكد بنفس الـ ID أو الإيميل');
- if(doc.id===userId)throw Error('ده حسابك إنت');
- const v=doc.data();return {uid:doc.id,user:{id:v.id,name:v.name,avatar:v.avatar,photo:rawPhoto(v.photo)}};
+  if(idx.exists()){const profile=await fs.getDoc(fs.doc(db,'directory',idx.data().uid));if(profile.exists())docs=[profile];}
+  if(!docs.length)throw Error('الإيميل غير موجود في دليل اللاعبين. صاحب الحساب لازم يسجل دخول بعد التحديث علشان يظهر في البحث.');
+ }else{
+  const key=term.toLocaleLowerCase().normalize('NFKC');
+  if(key.length<2||key.length>24)throw Error('اكتب حرفين على الأقل من اسم اللاعب');
+  const recent=await fs.getDocs(fs.query(fs.collection(db,'directory'),fs.orderBy('nameLower'),fs.startAt(key),fs.endAt(key+'\uf8ff'),fs.limit(30)));
+  docs=recent.docs;
+  // Exact names created before the searchable index was deployed.
+  if(docs.length<30){const legacy=await fs.getDocs(fs.query(fs.collection(db,'directory'),fs.where('name','==',term),fs.limit(30)));
+   docs=[...new Map([...docs,...legacy.docs].map(d=>[d.id,d])).values()].slice(0,30);}
+ }
+ const results=docs.filter(d=>d.id!==userId).map(d=>{const v=d.data();return{uid:d.id,user:{id:v.id||'',name:v.name||'لاعب',avatar:v.avatar||'🎮',photo:rawPhoto(v.photo)}};});
+ if(!results.length)throw Error('مفيش لاعبين مطابقين للبحث');
+ return results;
 }
 export async function cloudSendFriendRequest(otherUid){const {fs,db}=await init();if(!otherUid||otherUid===userId)throw Error('اختار حساب صاحبك');
  const id=idForFriend(userId,otherUid),ref=fs.doc(db,'friendRequests',id);
@@ -128,6 +166,11 @@ export async function cloudSendInbox(uid,kind,text,roomCode=''){
  await fs.addDoc(fs.collection(db,'inbox',uid,'items'),{fromUid:userId,kind,text:sanitize(text).slice(0,160),roomCode:cleanRoom(roomCode),read:false,at:fs.serverTimestamp(),pairId});
 }
 export async function cloudMarkInbox(id){const {fs,db}=await init();await fs.updateDoc(fs.doc(db,'inbox',userId,'items',id),{read:true});}
+export async function cloudMarkDirectRead(uid){
+ const {fs,db}=await init();
+ const unread=info.inbox.filter(x=>x.kind==='dm'&&!x.read&&x.fromUid===uid).slice(0,40);
+ await Promise.all(unread.map(m=>fs.updateDoc(fs.doc(db,'inbox',userId,'items',m.id),{read:true}).catch(()=>{})));
+}
 export async function cloudSendDirect(otherUid,text){const {fs,db}=await init();const clean=sanitize(text).slice(0,200);if(!clean)throw Error('اكتب رسالة');
  const pairId=idForFriend(userId,otherUid),friend=await fs.getDoc(fs.doc(db,'friendRequests',pairId));
  if(!friend.exists()||friend.data().status!=='accepted')throw Error('مش موجود في قائمة أصدقائك');
@@ -140,8 +183,9 @@ export function cloudWatchDirect(otherUid){if(!ctx||!userId)return;
  for(let i=stopFns.length-1;i>=0;i--)if(stopFns[i].__dm){const old=stopFns.splice(i,1)[0];try{old();}catch{}}
  info.dm=[];info.dmOther=otherUid;push();
  const pair=idForFriend(userId,otherUid);
+ cloudMarkDirectRead(otherUid).catch(()=>{});
  const unsub=fs.onSnapshot(fs.query(fs.collection(db,'dmThreads',pair,'messages'),fs.orderBy('at','desc'),fs.limit(60)),snap=>{
-  info.dm=snap.docs.map(d=>({id:d.id,...d.data(),at:tm(d.data().at)})).reverse();info.dmOther=otherUid;push();
+  info.dm=snap.docs.map(d=>{const data=d.data();return{id:d.id,...data,...dmSender(data.uid),at:tm(data.at)};}).reverse();info.dmOther=otherUid;push();
  },err=>onNotice({kind:'error',text:err.message}));
  unsub.__dm=true;stopFns.push(unsub);
 }
