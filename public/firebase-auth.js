@@ -39,7 +39,7 @@ export async function firebaseEmail(kind,email,password,name){
   const result=kind==='register'?
    await mod.createUserWithEmailAndPassword(auth,email,password):
    await mod.signInWithEmailAndPassword(auth,email,password);
-  if(kind==='register'&&name)await mod.updateProfile(result.user,{displayName:String(name).slice(0,24)});
+  if(kind==='register'&&name)await mod.updateProfile(result.user,{displayName:String(name).slice(0,24)}).catch(()=>{}); // Account creation has already succeeded; profile updates are best-effort.
   if(kind==='register'&&!result.user.emailVerified)await mod.sendEmailVerification(result.user).catch(()=>{});
   const u=result.user;
   return {provider:'email-cloud',uid:u.uid,email:u.email,name:u.displayName||name||'لاعب سيجا',photoURL:u.photoURL||null};
@@ -47,7 +47,7 @@ export async function firebaseEmail(kind,email,password,name){
   const errors={'auth/email-already-in-use':'الإيميل مسجل بالفعل؛ استخدم تسجيل الدخول',
    'auth/invalid-email':'الإيميل غير صحيح','auth/weak-password':'كلمة السر ضعيفة',
    'auth/invalid-credential':'الإيميل أو كلمة السر غير صحيحة',
-   'auth/operation-not-allowed':'فعّل تسجيل الإيميل من Firebase Authentication'};
+   'auth/operation-not-allowed':'تسجيل البريد الإلكتروني غير مفعّل في مشروع Firebase. مسؤول اللعبة لازم يفعّل Email/Password من Authentication → Sign-in method'};
   throw Error(errors[e.code]||'فشل تسجيل الحساب السحابي: '+String(e.message||e.code));
  }
 }
