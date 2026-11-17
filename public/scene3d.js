@@ -24,11 +24,14 @@ void main(){
    base*=clamp(.65+grain*.54,.67,1.20);
  }
  float shine=0.0;
+ vec3 view=normalize(camera-vP);
  if(vM>1.5){
-   vec3 view=normalize(camera-vP);
-   shine=pow(max(dot(reflect(-light,normal),view),0.0),24.0)*.22;
+   // Softer balanced highlights make ceramic and gold edges look rounded.
+   float highlight=max(dot(reflect(-light,normal),view),0.0);
+   shine=pow(highlight,vM>2.5?36.0:24.0)*(vM>2.5?.24:.18);
  }
- base=base*(.45+diffuse*.53)+vec3(1.0,.89,.70)*shine;
+ float edgeLight=pow(1.0-max(dot(normal,view),0.0),2.0)*.055;
+ base=base*(.47+diffuse*.49+edgeLight)+vec3(1.0,.91,.76)*shine;
  gl_FragColor=vec4(base,1.0);
 }`;
 function shader(gl,type,source){const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
@@ -105,7 +108,8 @@ const pieceTemplates=new Map();
 function initRenderer(){
  if(shared&&!shared.gl.isContextLost?.())return shared;
  const canvas=document.createElement('canvas');
- const gl=canvas.getContext('webgl',{antialias:false,alpha:false,preserveDrawingBuffer:false,depth:true,powerPreference:'low-power'})
+ const quality=(navigator.hardwareConcurrency||4)>4&&(navigator.deviceMemory||4)>=4;
+ const gl=canvas.getContext('webgl',{antialias:quality,alpha:false,preserveDrawingBuffer:false,depth:true,powerPreference:quality?'high-performance':'low-power'})
     ||canvas.getContext('experimental-webgl',{antialias:false,alpha:false});
  if(!gl)return null;
  let prog;
@@ -135,6 +139,8 @@ function initRenderer(){
   gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,img);
   gl.generateMipmap(gl.TEXTURE_2D);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+  const ext=gl.getExtension('EXT_texture_filter_anisotropic')||gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic')||gl.getExtension('MOZ_EXT_texture_filter_anisotropic');
+  if(ext){const max=gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT)||1;gl.texParameterf(gl.TEXTURE_2D,ext.TEXTURE_MAX_ANISOTROPY_EXT,Math.min(4,max));}
   shared.woodReady=1;
   shared.redraw?.();
  };
@@ -169,7 +175,8 @@ function paint(shared,buffer){
 function pixelScale(mode,n){
  const cores=navigator.hardwareConcurrency||4, memory=navigator.deviceMemory||4;
  const lowEnd=cores<=4||memory<=3;
- const cap=mode==='chinese'||n>=9?(lowEnd?1:1.12):n>=7?(lowEnd?1.12:1.30):(lowEnd?1.30:1.55);
+ // Sharper table edges and rounded stones on capable devices; remain lightweight on budget Android.
+  const cap=mode==='chinese'||n>=9?(lowEnd?1:1.22):n>=7?(lowEnd?1.12:1.45):(lowEnd?1.30:1.85);
  return Math.min(cap,window.devicePixelRatio||1);
 }
 export function reset3D(){active?.dispose();active=null;previous=null;}
@@ -198,7 +205,7 @@ export function mount3D(room){
  const tile=8.25/(n||9),rad=chinese?.245:tile*.325;
  // 9x9 stones are only ~20px across on phones: 14-sided lathe remains smooth
  // on screen while avoiding the 65k-vertex WebGL1 limit of the old renderer.
- const segs=chinese?14:n>=9?12:n>=7?16:22;
+ const segs=chinese?16:n>=9?14:n>=7?20:30;
  const camera=[0,11.5,7],at=[0,0,.90],view=look(camera,at);
  let matrix=multiply(perspective(Math.PI*41/180,1,.12,75),view);
  const key=mode+':'+(n||0);
@@ -284,7 +291,7 @@ export function mount3D(room){
    const from=positions[anim.from],to=positions[anim.to];
    const smooth=progress*progress*(3-2*progress);
    const x=from.x+(to.x-from.x)*smooth,z=from.z+(to.z-from.z)*smooth;
-   const y=.12+Math.sin(Math.PI*progress)*.64;
+   const y=.12+Math.sin(Math.PI*progress)*.49;
    const v=game.board[anim.to];
    if(v)addPiece(m,v,x,y,z);
   }
@@ -302,7 +309,7 @@ export function mount3D(room){
  }
  let hitLayer=null;
  const lowEnd=(navigator.hardwareConcurrency||4)<=4||(navigator.deviceMemory||4)<=3;
- const scale=pixelScale(mode,n),fps=chinese||n>=9?(lowEnd?30:45):n>=7?(lowEnd?40:55):60;
+ const scale=pixelScale(mode,n),fps=chinese||n>=9?(lowEnd?30:50):n>=7?(lowEnd?40:60):60;
  function draw(now,force=false){
   if(disposed||!canvas.isConnected)return;
   if(!force&&lastRender&&now-lastRender<1000/fps-2){raf=requestAnimationFrame(t=>draw(t));return;}
@@ -317,7 +324,7 @@ export function mount3D(room){
   gl.uniform1i(uniforms.wood,0);gl.uniform1f(uniforms.woodReady,r.woodReady);
   gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
   paint(r,r.base);paint(r,r.pieces);paint(r,r.overlays);
-  const progress=anim?Math.min(1,(now-anim.start)/690):1;
+  const progress=anim?Math.min(1,(now-anim.start)/780):1;
   if(moving||anim?.captures?.length){upload(gl,r.motion,motionGeometry(progress),gl.DYNAMIC_DRAW);paint(r,r.motion);}
   if(progress<1)raf=requestAnimationFrame(t=>draw(t));
  }
