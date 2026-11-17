@@ -3,12 +3,13 @@ import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js
 import {mount3D,reset3D} from './scene3d.js?v=11.2';
 import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js?v=11.2';
 import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js?v=11.2';
-import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic,cloudGetPlayer,cloudSendPublicInvite,cloudCloseDirect} from './cloud-social.js?v=11.2';
+import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic,cloudGetPlayer,cloudSendPublicInvite,cloudCloseDirect} from './cloud-social.js?v=11.3';
+import {matchInvitesStart,matchInvitesStop,matchCreate,matchRespond,matchCancel} from './match-invites.js?v=11.3';
 import {friendCallsStart,friendCallsStop,friendCallDial,friendCallAnswer,friendCallDecline,friendCallMute,friendCallHangup,friendPlayAudio} from './friend-call.js?v=11.2';
 const $=sel=>document.querySelector(sel);
 const fmt=n=>new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(n??0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={me:null,tab:'home',room:null,rooms:[],store:[],config:null,friends:[],ranking:[],search:[],world:[],socket:null,selected:null,authView:'login',socialMode:'friends',dmId:null,dmMessages:[],voice:false,localStream:null,peer:null,iceQueue:[],busy:false,boardSize:[3,5,7,9].includes(Number(localStorage.getItem('seega_board_size')))?Number(localStorage.getItem('seega_board_size')):5,gameMode:localStorage.getItem('seega_game_mode')||'seega5',boardTilt:true,chatOpen:false,rankFilter:'coins',captureFx:null,giftFx:null,giftMenuOpen:false,lastFxSeq:null,unreadRoom:0,voicePending:false,voiceConsent:false,spectatorApproved:false,cloud:{online:false,friends:[],requests:[],inbox:[],publicChat:[],dm:[]},cloudSearch:null,friendVoice:null,pendingVoice:null};
+const state={me:null,tab:'home',room:null,rooms:[],store:[],config:null,friends:[],ranking:[],search:[],world:[],socket:null,selected:null,authView:'login',socialMode:'friends',dmId:null,dmMessages:[],voice:false,localStream:null,peer:null,iceQueue:[],busy:false,boardSize:[3,5,7,9].includes(Number(localStorage.getItem('seega_board_size')))?Number(localStorage.getItem('seega_board_size')):5,gameMode:localStorage.getItem('seega_game_mode')||'seega5',boardTilt:true,chatOpen:false,rankFilter:'coins',captureFx:null,giftFx:null,giftMenuOpen:false,lastFxSeq:null,unreadRoom:0,voicePending:false,voiceConsent:false,spectatorApproved:false,cloud:{online:false,friends:[],requests:[],inbox:[],publicChat:[],dm:[]},cloudSearch:null,friendVoice:null,pendingVoice:null,matchInvites:[],outgoingInvites:[],outgoingMatchId:null,searchRequestId:0,roomVoiceMuted:false};
 let toastTimer=null;
 function toast(m){const el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100);}
 async function api(path,options={}){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},credentials:'same-origin',...options});let data;try{data=await r.json();}catch{data={};}if(!r.ok)throw Error(data.error||'حصلت مشكلة في الاتصال');return data;}
@@ -41,7 +42,7 @@ function notifyPlayer(message,{title='سيجا رويال',vibrate=true}={}){
 }
 function updateSocialBadge(){
  const nav=document.querySelector('#nav [data-tab="social"]');if(!nav)return;
- const n=state.cloud?.online?Number(state.cloud.unread||0):0;
+ const n=state.cloud?.online?Number(state.cloud.unread||0)+(state.matchInvites||[]).length+(state.cloud?.inbox||[]).filter(x=>x.kind==='invite'&&!x.read).length:0;
  let badge=nav.querySelector('.social-alert-badge');
  if(!n){badge?.remove();return;}
  if(!badge){badge=document.createElement('span');badge.className='social-alert-badge';badge.setAttribute('aria-label','تنبيهات الصحاب');nav.append(badge);}
@@ -210,14 +211,44 @@ function messageMarkup(m,isDm=false){
 }
 function worldSection(){return `<div class="card"><div class="section-head" style="margin:0 0 10px"><h3>🌍 الشات العام</h3><span><i class="neon-dot"></i> مباشر</span></div><div class="world-messages" id="world-messages">${state.world.length?state.world.map(m=>messageMarkup(m)).join(''):'<div class="muted">ابدأ أنت السلام على الناس 👋</div>'}</div><form class="send-row" id="world-form"><input class="chat-input" id="world-input" maxlength="150" placeholder="اكتب رسالة لطيفة..." required><button class="btn btn-primary" type="submit">إرسال</button></form></div>`;}
 function dmSection(){const friend=state.friends.find(f=>f.user.id===state.dmId)?.user;return `<button class="btn btn-secondary" data-action="dm-back" style="margin-bottom:12px">← رجوع</button><h3>${avatar(friend)} محادثة مع ${esc(friend?.name||'لاعب')}</h3><div class="world-messages" id="dm-messages">${state.dmMessages.map(m=>messageMarkup(m,true)).join('')}</div><form class="send-row" id="dm-form"><input class="chat-input" id="dm-input" maxlength="500" placeholder="رسالتك..." required><button class="btn btn-primary" type="submit">إرسال</button></form>`;}
+function cloudSearchRows(results){
+ if(!Array.isArray(results))return '';
+ if(!results.length)return '<div class="empty-state">مفيش لاعبين بنفس الحروف. جرّب تكمل الاسم.</div>';
+ return `<div class="friend-list">${results.map(p=>{
+  const relation=(state.cloud?.friends||[]).some(f=>f.uid===p.uid)?'friend':
+  (state.cloud?.requests||[]).some(r=>r.fromUid===p.uid)?'incoming':
+  (state.cloud?.sentRequests||[]).some(r=>r.toUid===p.uid)?'sent':p.relation;
+  const button=relation==='friend'?'<span class="pill">✓ عندك في الأصدقاء</span>':
+    relation==='sent'?'<span class="pill">📨 الطلب اتبعت</span>':
+    relation==='incoming'?'<span class="pill">📬 بعت لك طلب</span>':
+    `<button class="btn btn-primary" data-action="cloud-add" data-uid="${esc(p.uid)}">إضافة</button>`;
+  return `<div class="list-row"><button class="friend-person" data-action="cloud-profile" data-uid="${esc(p.uid)}">${avatar(p.user)}<span><b>${esc(p.user.name)}</b><small>${esc(p.user.id)}</small></span></button>${button}</div>`;
+ }).join('')}</div>`;
+}
+let searchDelay=null;
+async function cloudSearchIncremental(value){
+ const req=++state.searchRequestId;state.searchQuery=String(value||'').trim();
+ const host=$('#cloud-search-results');
+ if(state.searchQuery.length<2){state.cloudSearch=null;if(host)host.innerHTML='';return;}
+ if(host)host.innerHTML='<p class="muted">🔎 جاري البحث...</p>';
+ try{
+  const result=await cloudSearchPlayer(state.searchQuery);
+  if(req!==state.searchRequestId||state.socialMode!=='search')return;
+  state.cloudSearch=result;
+  const panel=$('#cloud-search-results');if(panel)panel.innerHTML=cloudSearchRows(result);
+ }catch(e){
+  if(req!==state.searchRequestId)return;
+  const panel=$('#cloud-search-results');if(panel)panel.innerHTML=`<p class="muted" role="status">${esc(e.message)}</p>`;
+ }
+}
 function renderCloudSocial(){
  const cloud=state.cloud||{},friends=cloud.friends||[],requests=cloud.requests||[],chat=cloud.publicChat||[];
  const tabs=state.socialMode==='dm'?'':`<div class="tabs"><button data-social="friends" class="${state.socialMode==='friends'?'active':''}">👥 صحابي</button><button data-social="search" class="${state.socialMode==='search'?'active':''}">🔎 إضافة</button><button data-social="world" class="${state.socialMode==='world'?'active':''}">🌍 الشات العام</button></div>`;
  if(state.socialMode==='search'){
-  const results=Array.isArray(state.cloudSearch)?state.cloudSearch:[];
   return tabs+`<div class="card"><h3>🔎 دور على لاعب بالاسم أو الإيميل أو Player ID</h3>
-   <div class="join-box"><input id="find-user" class="input" placeholder="اسم اللاعب أو الإيميل أو SG-XXXXXXXXXX"><button class="btn btn-mint" data-action="cloud-search">بحث</button></div>
-   ${results.length?`<div class="friend-list">${results.map(p=>`<div class="list-row"><button class="friend-person" data-action="cloud-profile" data-uid="${esc(p.uid)}">${avatar(p.user)}<span><b>${esc(p.user.name)}</b><small>${esc(p.user.id)}</small></span></button><button class="btn btn-primary" data-action="cloud-add" data-uid="${esc(p.uid)}">إضافة</button></div>`).join('')}</div>`:''}</div>`;
+   <div class="join-box"><input id="find-user" class="input" placeholder="اكتب أول حرفين من اسم صاحبك" autocomplete="off" value="${esc(state.searchQuery||'')}"><button class="btn btn-mint" data-action="cloud-search">بحث</button></div>
+   <div id="cloud-search-results" aria-live="polite">${cloudSearchRows(state.cloudSearch)}</div>
+   <p class="muted">الأسماء المقترحة بتظهر تلقائيًا بعد كتابة حرفين.</p></div>`;
  }
  if(state.socialMode==='world')return tabs+`<div class="card"><h3>🌍 الشات العام · لاعبين حقيقيين</h3>
  <div class="world-messages" id="world-messages">${chat.map(m=>`${messageMarkup(m)}${m.roomCode?`<button class="invite-chat-action" data-action="join" data-id="${esc(m.roomCode)}">🎲 انضم للغرفة ${esc(m.roomCode)}</button>`:''}`).join('')||'<p class="muted">قول أهلا للناس 👋</p>'}</div>
@@ -500,8 +531,8 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='reject-call'){closeModal();await emit('voice:response',{accept:false});toast('رفضت المكالمة');}
  else if(a==='cancel-call'){state.voicePending=false;await emit('voice:cancel',{id:state.room?.id});closeModal();toast('اتلغى الطلب');}
  else if(a==='enable-notifications'){if(!('Notification' in window))return toast('المتصفح لا يدعم إشعارات النظام');const permission=await Notification.requestPermission();toast(permission==='granted'?'🔔 تم تفعيل إشعارات المتصفح':'هنظهر التنبيهات داخل اللعبة فقط');}
- else if(a==='cloud-search'){state.cloudSearch=await cloudSearchPlayer($('#find-user')?.value);render();}
- else if(a==='cloud-add'){await cloudSendFriendRequest(b.dataset.uid);state.cloudSearch=null;closeModal();toast('📨 بعت طلب الصداقة');render();}
+ else if(a==='cloud-search'){await cloudSearchIncremental($('#find-user')?.value);}
+ else if(a==='cloud-add'){await cloudSendFriendRequest(b.dataset.uid);if(Array.isArray(state.cloudSearch))state.cloudSearch=state.cloudSearch.map(p=>p.uid===b.dataset.uid?{...p,relation:'sent'}:p);closeModal();toast('📨 بعت طلب الصداقة');render();}
  else if(a==='cloud-accept'||a==='cloud-reject'){await cloudRespondFriend(b.dataset.pair,a==='cloud-accept');toast(a==='cloud-accept'?'🤝 وافقت على الصداقة':'رفضت الطلب');}
  else if(a==='cloud-dm'){closeModal();state.socialMode='dm';state.cloud.dmOther=b.dataset.uid;cloudWatchDirect(b.dataset.uid);render();}
  else if(a==='cloud-dm-back'){cloudCloseDirect();state.socialMode='friends';render();}
@@ -534,6 +565,12 @@ async function onForm(form){try{if(form.id==='profile-form'){const v=await patch
  }catch(e){toast(e.message);}}
 document.addEventListener('click',e=>{const nav=e.target.closest('[data-tab]');if(nav){if(state.room)return;const tab=nav.dataset.tab;view(tab);refresh(tab);return;}const social=e.target.closest('[data-social]');if(social){state.socialMode=social.dataset.social;render();return;}const b=e.target.closest('[data-action]');if(b){clickAction(b);return;}if(e.target.id==='modal-backdrop')closeModal();});
 document.addEventListener('submit',e=>{if(e.target.id==='auth-form')return;e.preventDefault();onForm(e.target);});
+document.addEventListener('input',e=>{
+ if(e.target?.id!=='find-user'||!state.cloud?.online||state.socialMode!=='search')return;
+ const value=e.target.value;clearTimeout(searchDelay);
+ if(value.trim().length<2){state.searchQuery=value;state.cloudSearch=null;state.searchRequestId++;const panel=$('#cloud-search-results');if(panel)panel.innerHTML='';return;}
+ searchDelay=setTimeout(()=>cloudSearchIncremental(value),260);
+});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 document.addEventListener('change',async e=>{
  if(e.target.id!=='gallery-photo')return;
