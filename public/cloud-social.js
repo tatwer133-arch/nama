@@ -18,7 +18,7 @@ async function init(){if(ctx)return ctx;if(!firebaseReady())throw Error('الم�
  ctx={auth,fs,db:fs.getFirestore(getApp())};userId=auth.currentUser.uid;return ctx;
 }
 function idForFriend(a,b){return [a,b].sort().join('__');}
-function subscribe(q,fn){const {fs}=ctx;const stop=fs.onSnapshot(q,fn,e=>onNotice({kind:'error',text:'مزامنة الحساب: '+String(e.code||e.message)}));stopFns.push(stop);return stop;}
+function subscribe(q,fn){const {fs}=ctx;const stop=fs.onSnapshot(q,fn,e=>{info.online=false;push();onNotice({kind:'error',text:'تعذرت متابعة بيانات Firebase: '+String(e.code||e.message)});});stopFns.push(stop);return stop;}
 async function refreshFriends(){const {fs,db}=ctx;
  const snapshots=await Promise.all([fs.getDocs(fs.query(fs.collection(db,'friendRequests'),fs.where('fromUid','==',userId))),fs.getDocs(fs.query(fs.collection(db,'friendRequests'),fs.where('toUid','==',userId)))]);
  const requests=[...new Map(snapshots.flatMap(s=>s.docs).map(d=>[d.id,{pairId:d.id,...d.data()}])).values()];info.requests=await Promise.all(requests.filter(x=>x.status==='pending'&&x.toUid===userId).map(async x=>{
@@ -87,7 +87,7 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
 export async function cloudSocialStop(){
  if(heartbeat)clearInterval(heartbeat);heartbeat=null;for(const f of stopFns.splice(0))try{f();}catch{}for(const f of presenceWatchers.values())try{f();}catch{}presenceWatchers.clear();
  if(ctx&&userId){const {fs,db}=ctx;await fs.setDoc(fs.doc(db,'presence',userId),{status:'offline',roomCode:'',watchAllowed:false,lastSeen:fs.serverTimestamp()},{merge:true}).catch(()=>{});}
- ctx=null;userId=null;info.online=false;info.friends=[];info.requests=[];info.dm=[];info.publicChat=[];info.inbox=[];
+ ctx=null;userId=null;info.online=false;info.friends=[];info.requests=[];info.dm=[];info.dmOther=null;info.publicChat=[];info.inbox=[];
 }
 export async function cloudSearchPlayer(s){const {fs,db}=await init();const term=sanitize(s);let doc=null;
  if(validID(term)){
@@ -102,9 +102,18 @@ export async function cloudSearchPlayer(s){const {fs,db}=await init();const term
  const v=doc.data();return {uid:doc.id,user:{id:v.id,name:v.name,avatar:v.avatar,photo:rawPhoto(v.photo)}};
 }
 export async function cloudSendFriendRequest(otherUid){const {fs,db}=await init();if(!otherUid||otherUid===userId)throw Error('اختار حساب صاحبك');
- const id=idForFriend(userId,otherUid),ref=fs.doc(db,'friendRequests',id),old=await fs.getDoc(ref);
- if(old.exists())throw Error(old.data().status==='accepted'?'أنتوا أصحاب بالفعل':'طلب الصداقة موجود بالفعل');
- await fs.setDoc(ref,{fromUid:userId,toUid:otherUid,status:'pending',at:fs.serverTimestamp()});
+ const id=idForFriend(userId,otherUid),ref=fs.doc(db,'friendRequests',id);
+ // Read of a missing friendRequests document is not permitted by the existing
+ // participant-only read rule. Create directly; Firestore distinguishes create
+ // from update, so an existing request cannot be overwritten by the sender.
+ if(info.friends.some(x=>x.uid===otherUid))throw Error('أنتوا أصحاب بالفعل');
+ if(info.requests.some(x=>x.fromUid===otherUid))throw Error('صاحبك بعت لك طلب بالفعل؛ وافق عليه من طلبات الصداقة');
+ try{
+  await fs.setDoc(ref,{fromUid:userId,toUid:otherUid,status:'pending',at:fs.serverTimestamp()});
+ }catch(e){
+  if(e?.code==='permission-denied')throw Error('الطلب موجود بالفعل أو الحساب الآخر لا يقبل الطلب. راجع طلبات الصداقة.');
+  throw e;
+ }
  return true;
 }
 export async function cloudRespondFriend(pairId,accept){const {fs,db}=await init();
@@ -123,10 +132,13 @@ export async function cloudSendDirect(otherUid,text){const {fs,db}=await init();
  const pairId=idForFriend(userId,otherUid),friend=await fs.getDoc(fs.doc(db,'friendRequests',pairId));
  if(!friend.exists()||friend.data().status!=='accepted')throw Error('مش موجود في قائمة أصدقائك');
  await fs.addDoc(fs.collection(db,'dmThreads',pairId,'messages'),{uid:userId,text:clean,at:fs.serverTimestamp()});
- await cloudSendInbox(otherUid,'dm','💬 وصلت لك رسالة جديدة');
+ // The message is committed already; failure to notify must not report a failed send.
+ await cloudSendInbox(otherUid,'dm','💬 وصلت لك رسالة جديدة').catch(e=>onNotice({kind:'error',text:'الرسالة وصلت لكن الإشعار لم يُرسل: '+e.message}));
 }
 export function cloudWatchDirect(otherUid){if(!ctx||!userId)return;
- const {fs,db}=ctx;for(const f of stopFns.filter(x=>x.__dm))try{f();}catch{}
+ const {fs,db}=ctx;
+ for(let i=stopFns.length-1;i>=0;i--)if(stopFns[i].__dm){const old=stopFns.splice(i,1)[0];try{old();}catch{}}
+ info.dm=[];info.dmOther=otherUid;push();
  const pair=idForFriend(userId,otherUid);
  const unsub=fs.onSnapshot(fs.query(fs.collection(db,'dmThreads',pair,'messages'),fs.orderBy('at','desc'),fs.limit(60)),snap=>{
   info.dm=snap.docs.map(d=>({id:d.id,...d.data(),at:tm(d.data().at)})).reverse();info.dmOther=otherUid;push();
