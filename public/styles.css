@@ -400,3 +400,26 @@ body{position:fixed;inset:0;width:100%;height:100dvh}
 .friend-call-buttons{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
 .friend-call-buttons .btn{font-size:10px;padding:7px 8px}
 @media(max-width:420px){.friend-actions{gap:3px}.friend-actions>button{min-width:32px;width:33px;height:35px;font-size:16px}.friend-person .avatar-icon{width:36px;height:36px}.friend-person{gap:6px}.friend-call-label b{max-width:100px}.friend-call-buttons .btn{font-size:10px;padding:7px}.msg-person{max-width:60px}.msg .msg-box{max-width:calc(100% - 62px)}}
+
+
+/* V11.3 invitation and voice UX: no clipped decisions at narrow phone widths. */
+.match-requests{margin-bottom:12px}
+.match-requests h3{font-size:15px;margin:0 0 10px}
+.match-requests .list-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.match-requests .row-main{flex:1 1 100%;max-width:100%}
+.match-requests .row-main small{display:block;overflow-wrap:anywhere}
+.match-requests .btn{flex:1 1 105px;font-size:11px;min-width:0;padding:9px 6px}
+#cloud-search-results{min-height:8px}
+#cloud-search-results .friend-list{margin-top:12px}
+#cloud-search-results .list-row{flex-wrap:wrap}
+#cloud-search-results .friend-person{flex:1 1 170px}
+#cloud-search-results .pill{font-size:10px;white-space:nowrap}
+#cloud-search-results .btn{min-width:72px}
+button[aria-busy="true"]{opacity:.7;cursor:wait}
+.room-quickbar [data-action="room-voice-mute"]{border-color:#d2a366;color:#f6d9a7;white-space:nowrap}
+@media (max-width:380px){
+  .match-requests .btn{flex:1 1 80px}
+  .friend-actions button{min-width:30px}
+  .room-quickbar{flex-wrap:wrap}
+  .room-quickbar [data-action="room-voice-mute"]{font-size:11px}
+}
