@@ -68,13 +68,13 @@ test('Chromium: real mobile UI, guest login, bot turns, navigation, and responsi
     if(changed)break;
    }
   }
-  if(!changed){
-   // On devices without WebGL the accessible HTML grid remains interactive.
-   await page.locator('[data-action="cell"][data-cell="0"]').evaluate(el=>el.click());
+  if(!box){
+   // WebGL unsupported: the semantic HTML grid must remain playable.
+   await page.locator('[data-action="cell"][data-cell="0"]').click();
    await page.waitForTimeout(100);
    changed=await page.locator('[role="grid"] .stone').count();
   }
-  assert.ok(changed>=1,'Game board must accept placement through 3D touch or fallback grid');
+  assert.ok(changed>=1,box?'Visible 3D canvas did not respond to real pointer taps':'Accessible fallback grid did not respond');
   await page.screenshot({path:'qa-artifacts/mobile-game.png',fullPage:true});
   assert.deepEqual(pageErrors,[]);
   await page.close();
