@@ -110,21 +110,40 @@ service cloud.firestore {
       allow update,delete: if false;
     }
     match /inbox/{recipient}/items/{id} {
+      function publicInvite() {
+        let d=request.resource.data;
+        return signed() && id == request.auth.uid &&
+          recipient != request.auth.uid &&
+          exists(/databases/$(database)/documents/directory/$(recipient)) &&
+          d.keys().hasOnly(['fromUid','kind','text','roomCode','read','at','pairId']) &&
+          d.keys().hasAll(['fromUid','kind','text','roomCode','read','at','pairId']) &&
+          d.fromUid == request.auth.uid && d.kind == 'invite' &&
+          d.pairId == '' && d.read == false &&
+          d.text is string && d.text.size() <= 160 &&
+          d.roomCode is string && d.roomCode.matches('^[A-Z0-9]{6}$') &&
+          d.at == request.time;
+      }
       allow get,list: if own(recipient);
-      allow create: if signed() && friends(request.resource.data.pairId)
-        && request.resource.data.keys().hasOnly(['fromUid','kind','text','roomCode','read','at','pairId'])
-        && request.resource.data.fromUid == request.auth.uid
-        && request.resource.data.kind in ['dm','invite','notice']
-        && request.resource.data.read == false
-        && request.resource.data.text is string && request.resource.data.text.size() <= 160
-        && request.resource.data.roomCode is string && request.resource.data.roomCode.size() <= 6
-        && request.resource.data.at == request.time
-        && recipient != request.auth.uid
-        && (get(/databases/$(database)/documents/friendRequests/$(request.resource.data.pairId)).data.fromUid == recipient
-            || get(/databases/$(database)/documents/friendRequests/$(request.resource.data.pairId)).data.toUid == recipient);
-      allow update: if own(recipient)
-        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['read'])
-        && request.resource.data.read == true;
+      allow create: if publicInvite() ||
+        (signed() && friends(request.resource.data.pairId) &&
+        request.resource.data.keys().hasOnly(['fromUid','kind','text','roomCode','read','at','pairId']) &&
+        request.resource.data.fromUid == request.auth.uid &&
+        request.resource.data.kind in ['dm','invite','notice'] &&
+        request.resource.data.read == false &&
+        request.resource.data.text is string && request.resource.data.text.size() <= 160 &&
+        request.resource.data.roomCode is string && request.resource.data.roomCode.size() <= 6 &&
+        request.resource.data.at == request.time &&
+        recipient != request.auth.uid &&
+        (get(/databases/$(database)/documents/friendRequests/$(request.resource.data.pairId)).data.fromUid == recipient ||
+         get(/databases/$(database)/documents/friendRequests/$(request.resource.data.pairId)).data.toUid == recipient));
+      allow update: if
+        (own(recipient) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) &&
+          request.resource.data.read == true)
+        || (resource.data.fromUid == request.auth.uid &&
+            resource.data.kind == 'invite' && resource.data.pairId == '' &&
+            request.time > resource.data.at + duration.value(20,'s') &&
+            publicInvite());
       allow delete: if own(recipient);
     }
     match /friendCalls/{callId} {
