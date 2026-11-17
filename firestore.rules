@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /players/{userId} {
+      function own() {return request.auth != null && request.auth.uid == userId;}
+      function approved() {
+        return request.resource.data.keys().hasOnly(['ownerUid', 'id', 'name', 'avatar', 'photo', 'color', 'settings', 'updatedAt'])
+          && request.resource.data.keys().hasAll(['ownerUid','id','name','avatar','color','settings','updatedAt'])
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.id is string
+          && request.resource.data.id.matches('^SG-[A-F0-9]{10}$')
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 24
+          && request.resource.data.avatar is string
+          && request.resource.data.avatar.size() <= 32
+          && (request.resource.data.photo == null || (request.resource.data.photo is string && request.resource.data.photo.size() <= 170000))
+          && request.resource.data.color in ['ruby','ocean','sun','jade']
+          && request.resource.data.settings is map
+          && request.resource.data.settings.keys().hasOnly(['sound','music'])
+          && request.resource.data.settings.sound is bool
+          && request.resource.data.settings.music is bool
+          && request.resource.data.updatedAt is int;
+      }
+      allow get: if own();
+      allow list: if false;
+      allow create: if own() && approved();
+      allow update: if own() && approved() && request.resource.data.id == resource.data.id && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if own();
+    }
+    match /{document=**} {allow read, write: if false;}
+  }
+}
