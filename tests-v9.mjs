@@ -24,7 +24,7 @@ class FakePeer extends EventEmitter{
 function adapter(){
  const entries=new Map(),storage={getItem:k=>entries.get(k)||null,setItem:(k,v)=>entries.set(k,String(v)),removeItem:k=>entries.delete(k)};
  const window={Peer:FakePeer,fetch:async()=>({})};
- const code=readFileSync(new URL('./public/offline-adapter.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'').replace(/await import\('\.\/app\.js\?v=\d+'\);/,'');
+ const code=readFileSync(new URL('./public/offline-adapter.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'').replace(/await import\('\.\/app\.js\?v=\d+(?:\.\d+)?'\);/,'');
  const maker=new Function('initialGame','applyAction','aiAction','initialVariant','variantApply','variantAI','window','localStorage','sessionStorage','crypto','structuredClone','Response','setTimeout','clearTimeout',code+'\nreturn {message, getRoom:roomSafe, stopP2P, window};');
  return maker(initialGame,applyAction,aiAction,initialVariant,variantApply,variantAI,window,storage,storage,crypto.webcrypto,structuredClone,Response,setTimeout,clearTimeout);
 }
