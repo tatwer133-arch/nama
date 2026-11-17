@@ -5,12 +5,18 @@ let context=null,stopIncoming=null,session=null;
 let incomingHandler=()=>{},changeHandler=()=>{},noticeHandler=()=>{};
 const seen=new Set(),pending=new Map();
 const callCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>b.toString(16).padStart(2,'0')).join('');
-const friendly=e=>e?.name==='NotAllowedError'?'اسمح للعبة تستخدم الميكروفون من إعدادات المتصفح':String(e?.message||'تعذر الاتصال الصوتي');
+const friendly=e=>{
+ if(e?.code==='permission-denied'||/Missing or insufficient permissions/i.test(String(e?.message||'')))
+  return 'Firebase رفض الاتصال لأن قواعد مكالمات الأصدقاء لم تُنشر. افتح Firebase → Firestore Database → Rules وانشر أحدث ملف firestore.rules من GitHub.';
+ if(e?.name==='NotAllowedError')return 'اسمح للعبة باستخدام الميكروفون من إعدادات Chrome.';
+ return String(e?.message||'تعذر الاتصال الصوتي');
+};
 const pair=(a,b)=>[a,b].sort().join('__');
 function update(){changeHandler(session?{active:true,id:session.id,name:session.name,status:session.status,muted:session.muted}:null);}
 function stopAudio(){const el=document.getElementById('seega-friend-audio');if(el){el.srcObject=null;el.remove();}}
 export function friendPlayAudio(){const el=document.getElementById('seega-friend-audio');return el?.play();}
 function remoteAudio(stream){
+ if(session?.timer){clearTimeout(session.timer);session.timer=null;}
  let audio=document.getElementById('seega-friend-audio');
  if(!audio){audio=document.createElement('audio');audio.id='seega-friend-audio';audio.autoplay=true;audio.playsInline=true;document.body.append(audio);}
  audio.srcObject=stream;
@@ -20,6 +26,7 @@ function remoteAudio(stream){
 function cleanLocal(){
  const current=session;session=null;
  if(!current){update();return;}
+ if(current.timer)clearTimeout(current.timer);
  try{current.unsubscribe?.();}catch{}
  try{current.mediaCall?.close();}catch{}
  try{current.peer?.destroy();}catch{}
@@ -100,13 +107,15 @@ export async function friendCallDial(otherUid,name){
  const peerId='seegaroyal-voice-'+callCode(),peer=new window.Peer(peerId,{debug:0});
  try{await peerOpen(peer);}catch(e){stream.getTracks().forEach(t=>t.stop());peer.destroy();throw Error(friendly(e));}
  const docRef=fs.doc(fs.collection(db,'friendCalls'));
- const current={id:docRef.id,ref:docRef,role:'caller',status:'ringing',name,stream,peer,mediaCall:null,muted:false,unsubscribe:null};
+ const current={id:docRef.id,ref:docRef,role:'caller',status:'ringing',name,stream,peer,mediaCall:null,muted:false,unsubscribe:null,timer:null};
  session=current;update();
+ peer.on('error',e=>{if(session===current){noticeHandler('الصوت: '+friendly(e));friendCallHangup().catch(()=>{});}});
  peer.on('call',call=>{
   if(session!==current||call.metadata?.callId!==current.id){call.close();return;}
   current.mediaCall=call;
   current.stream.getAudioTracks().forEach(t=>t.enabled=!current.muted);
   call.answer(current.stream);current.status='connecting';update();
+  current.timer=setTimeout(()=>{if(session===current&&current.status!=='connected'){noticeHandler('الصوت ما اتوصلش؛ جرّب شبكة ثانية أو إعداد TURN');friendCallHangup().catch(()=>{});}},25000);
   call.on('stream',remoteAudio);
   call.on('close',()=>{if(session===current)friendCallHangup().catch(()=>{});});
   call.on('error',e=>noticeHandler('تعذر نقل الصوت: '+friendly(e)));
@@ -127,13 +136,15 @@ export async function friendCallAnswer(id,name){
  await peerJs();
  const stream=await mic();const peer=new window.Peer(undefined,{debug:0});
  try{await peerOpen(peer);}catch(e){stream.getTracks().forEach(t=>t.stop());peer.destroy();throw Error(friendly(e));}
- const current={id,ref,role:'receiver',status:'connecting',name,stream,peer,mediaCall:null,muted:false,unsubscribe:null};
+ const current={id,ref,role:'receiver',status:'connecting',name,stream,peer,mediaCall:null,muted:false,unsubscribe:null,timer:null};
  session=current;update();
  try{
   await fs.updateDoc(ref,{state:'accepted',updatedAt:fs.serverTimestamp()});
   current.unsubscribe=watchActiveCall(ref,id);
+  peer.on('error',e=>{if(session===current){noticeHandler('الصوت: '+friendly(e));friendCallHangup().catch(()=>{});}});
   const call=peer.call(remote.peerId,stream,{metadata:{callId:id}});if(!call)throw Error('تعذر ربط الصوت');
   current.mediaCall=call;
+  current.timer=setTimeout(()=>{if(session===current&&current.status!=='connected'){noticeHandler('تعذر اتصال الصوت بعد الموافقة؛ جرّب شبكة مختلفة أو TURN');friendCallHangup().catch(()=>{});}},25000);
   call.on('stream',remoteAudio);
   call.on('close',()=>{if(session===current)friendCallHangup().catch(()=>{});});
   call.on('error',e=>noticeHandler('تعذر نقل الصوت: '+friendly(e)));
