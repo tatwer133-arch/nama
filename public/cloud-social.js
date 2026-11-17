@@ -56,14 +56,14 @@ async function refreshFriends(){const {fs,db}=ctx;
   const [pub,presence]=await Promise.all([fs.getDoc(fs.doc(db,'directory',uid)),fs.getDoc(fs.doc(db,'presence',uid))]);
   const profile=pub.exists()?pub.data():{id:'',name:'لاعب'};
   const pr=presence.exists()?presence.data():{};
-  const isOnline=Date.now()-tm(pr.lastSeen)<125000;
+  const isOnline=Date.now()-tm(pr.lastSeen)<125000&&pr.status!=='offline';
   return {uid,pairId:x.pairId,user:{id:profile.id||'',name:profile.name||'لاعب',avatar:profile.avatar||'🎮',photo:rawPhoto(profile.photo)},online:isOnline,status:isOnline?pr.status||'online':'offline',roomCode:isOnline?cleanRoom(pr.roomCode):'',watchAllowed:isOnline&&pr.watchAllowed===true};
  }));
  info.friends=friends;
  for(const old of [...presenceWatchers.keys()])if(!friends.some(f=>f.uid===old)){presenceWatchers.get(old)();presenceWatchers.delete(old);}
  for(const f of friends)if(!presenceWatchers.has(f.uid)){
   const unsub=fs.onSnapshot(fs.doc(db,'presence',f.uid),snap=>{
-   const pr=snap.exists()?snap.data():{},online=Date.now()-tm(pr.lastSeen)<125000;
+   const pr=snap.exists()?snap.data():{},online=Date.now()-tm(pr.lastSeen)<125000&&pr.status!=='offline';
    const current=info.friends.find(x=>x.uid===f.uid);if(!current)return;
    current.online=online;current.status=online?pr.status||'online':'offline';current.roomCode=online?cleanRoom(pr.roomCode):'';
    current.watchAllowed=online&&pr.watchAllowed===true;push();
@@ -103,6 +103,7 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
  const startup=Date.now(),seen=new Set();
  subscribe(fs.query(fs.collection(db,'inbox',userId,'items'),fs.orderBy('at','desc'),fs.limit(40)),snap=>{
   info.inbox=snap.docs.map(d=>({id:d.id,...d.data(),at:tm(d.data().at)}));push();
+  if(info.dmOther)cloudMarkDirectRead(info.dmOther).catch(()=>{});
   for(const change of snap.docChanges()){
    const data=change.doc.data(),at=tm(data.at),id=change.doc.id;
    if(change.type==='added'&&!data.read&&at>=startup-8000&&!seen.has(id)){
@@ -192,4 +193,22 @@ export function cloudWatchDirect(otherUid){if(!ctx||!userId)return;
 export async function cloudPostPublic(text,roomCode=''){const {fs,db}=await init();const clean=sanitize(text).slice(0,180),code=cleanRoom(roomCode);
  if(!clean||clean.length>180)throw Error('اكتب رسالة قصيرة');
  await fs.addDoc(fs.collection(db,'publicChat'),{uid:userId,kind:code?'invite':'text',name:publicName,text:clean,roomCode:code,at:fs.serverTimestamp()});
+}
+// Public player card. This does not reveal private wallet/profile documents.
+export async function cloudGetPlayer(uid){
+ const {fs,db}=await init();
+ if(typeof uid!=='string'||uid.length>128)throw Error('معرف اللاعب غير صحيح');
+ const [snap,pr]=await Promise.all([fs.getDoc(fs.doc(db,'directory',uid)),fs.getDoc(fs.doc(db,'presence',uid))]);
+ if(!snap.exists())throw Error('اللاعب غير موجود');
+ const v=snap.data(),p=pr.exists()?pr.data():{};
+ return {uid,user:{id:v.id||'',name:v.name||'لاعب',avatar:v.avatar||'🎮',photo:rawPhoto(v.photo)},online:Date.now()-tm(p.lastSeen)<125000&&p.status!=='offline',roomCode:cleanRoom(p.roomCode),watchAllowed:p.watchAllowed===true};
+}
+// A public-room invite uses one document per sender and recipient, so
+// repeated clicks cannot create an unlimited number of separate alerts.
+export async function cloudSendPublicInvite(recipient,text,roomCode){
+ const {auth,fs,db}=await init(),code=cleanRoom(roomCode);
+ if(!recipient||recipient===auth.currentUser.uid||!code)throw Error('الدعوة أو كود الغرفة غير صحيح');
+ await fs.setDoc(fs.doc(db,'inbox',recipient,'items',userId),{
+  fromUid:userId,kind:'invite',text:sanitize(text).slice(0,160),roomCode:code,read:false,at:fs.serverTimestamp(),pairId:''
+ });
 }
