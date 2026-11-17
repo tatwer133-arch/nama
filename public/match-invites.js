@@ -62,8 +62,12 @@ export async function matchRespond(id,accept){
 }
 export async function matchCancel(id){
  if(!id)return;
- try{const {fs,db}=await init();const item=outgoing.find(v=>v.id===id);
-  if(item?.fromUid===me&&item?.status==='pending')await fs.updateDoc(fs.doc(db,'matchInvites',id),{status:'cancelled',updatedAt:fs.serverTimestamp()});
+ try{
+  const {fs,db}=await init(),ref=fs.doc(db,'matchInvites',id);
+  const item=outgoing.find(v=>v.id===id);
+  const data=item||(await fs.getDoc(ref)).data();
+  if(data?.fromUid===me&&data?.status==='pending')
+    await fs.updateDoc(ref,{status:'cancelled',updatedAt:fs.serverTimestamp()});
  }catch{}
 }
 export async function matchInvitesStop(){
