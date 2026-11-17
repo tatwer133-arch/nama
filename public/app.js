@@ -1,11 +1,11 @@
 import {variantActions,chineseLayout,GAME_CATALOG} from './variants.js';
 import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js';
-import {mount3D,reset3D} from './scene3d.js?v=11.2';
-import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js?v=11.2';
-import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js?v=11.2';
+import {mount3D,reset3D} from './scene3d.js?v=11.3';
+import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js?v=11.3';
+import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js?v=11.3';
 import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic,cloudGetPlayer,cloudSendPublicInvite,cloudCloseDirect} from './cloud-social.js?v=11.3';
 import {matchInvitesStart,matchInvitesStop,matchCreate,matchRespond,matchCancel} from './match-invites.js?v=11.3';
-import {friendCallsStart,friendCallsStop,friendCallDial,friendCallAnswer,friendCallDecline,friendCallMute,friendCallHangup,friendPlayAudio} from './friend-call.js?v=11.2';
+import {friendCallsStart,friendCallsStop,friendCallDial,friendCallAnswer,friendCallDecline,friendCallMute,friendCallHangup,friendPlayAudio} from './friend-call.js?v=11.3';
 const $=sel=>document.querySelector(sel);
 const fmt=n=>new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(n??0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
