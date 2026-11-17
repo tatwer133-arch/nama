@@ -147,7 +147,7 @@ service cloud.firestore {
       allow delete: if own(recipient);
     }
     match /matchInvites/{inviteId} {
-      function valid() {
+      function validInvite() {
         let d=request.resource.data;
         return signed() &&
           d.keys().hasOnly(['fromUid','toUid','fromName','roomCode','status','createdAt','updatedAt']) &&
@@ -155,63 +155,18 @@ service cloud.firestore {
           d.fromUid is string && d.toUid is string && d.fromUid != d.toUid &&
           d.fromUid.size() <= 128 && d.toUid.size() <= 128 &&
           stringsUnder(d,'fromName',24) &&
-          d.roomCode is string && d.roomCode.matches('^[A-Z0-9]{6}
-      function pairPath(pairId) {
-        return /databases/$(database)/documents/friendRequests/$(pairId);
-      }
-      function counterpart(d) {
-        return exists(pairPath(d.pairId))
-          && get(pairPath(d.pairId)).data.status == 'accepted'
-          && (
-            (get(pairPath(d.pairId)).data.fromUid == d.fromUid &&
-             get(pairPath(d.pairId)).data.toUid == d.toUid) ||
-            (get(pairPath(d.pairId)).data.toUid == d.fromUid &&
-             get(pairPath(d.pairId)).data.fromUid == d.toUid)
-          );
-      }
-      allow get,list: if signed() &&
-        (resource.data.fromUid == request.auth.uid ||
-         resource.data.toUid == request.auth.uid);
-      allow create: if signed() &&
-        request.resource.data.keys().hasOnly(['fromUid','toUid','pairId','peerId','state','createdAt','updatedAt']) &&
-        request.resource.data.keys().hasAll(['fromUid','toUid','pairId','peerId','state','createdAt','updatedAt']) &&
-        request.resource.data.fromUid == request.auth.uid &&
-        request.resource.data.toUid is string &&
-        request.resource.data.toUid != request.auth.uid &&
-        stringsUnder(request.resource.data,'pairId',270) &&
-        stringsUnder(request.resource.data,'peerId',128) &&
-        request.resource.data.state == 'ringing' &&
-        request.resource.data.createdAt == request.time &&
-        request.resource.data.updatedAt == request.time &&
-        counterpart(request.resource.data);
-      allow update: if signed() &&
-        (resource.data.fromUid == request.auth.uid ||
-         resource.data.toUid == request.auth.uid) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state','updatedAt']) &&
-        request.resource.data.updatedAt == request.time &&
-        (
-          (resource.data.state == 'ringing' &&
-            resource.data.toUid == request.auth.uid &&
-            request.resource.data.state in ['accepted','declined']) ||
-          (resource.data.state in ['ringing','accepted'] &&
-            request.resource.data.state == 'ended')
-        );
-      allow delete: if false;
-    }
-    match /{document=**} {allow read,write: if false;}
-  }
-}) &&
+          d.roomCode is string && d.roomCode.matches('^[A-Z0-9]{6}$') &&
           inviteId == d.fromUid + '__' + d.toUid &&
           d.updatedAt == request.time;
       }
       allow get,list: if signed() &&
         (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
-      allow create: if valid() &&
+      allow create: if validInvite() &&
         request.resource.data.fromUid == request.auth.uid &&
         request.resource.data.status == 'pending' &&
         request.resource.data.createdAt == request.time &&
         exists(/databases/$(database)/documents/directory/$(request.resource.data.toUid));
-      allow update: if valid() &&
+      allow update: if validInvite() &&
         request.resource.data.fromUid == resource.data.fromUid &&
         request.resource.data.toUid == resource.data.toUid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt','createdAt','roomCode','fromName']) &&
