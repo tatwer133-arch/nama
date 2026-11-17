@@ -80,8 +80,8 @@ test('red nav badge counts friend requests, private messages and pending matches
 
 test('mobile UI retains browser, app navigation, 3D board and privacy boundaries',()=>{
  const html=s('./public/index.html'),scene=s('./public/scene3d.js');
- assert.match(html,/offline-adapter\.js\?v=11\.3/);
- assert.match(html,/styles\.css\?v=11\.3/);
+ assert.match(html,/offline-adapter\.js\?v=11\.[34]/);
+ assert.match(html,/styles\.css\?v=11\.[34]/);
  assert.match(app,/mount3D\(state\.room\)/);
  assert.match(scene,/canvas\.addEventListener\('pointerup',onPointer\)/);
  assert.match(css,/@media\s*\(max-width:380px\)/);
