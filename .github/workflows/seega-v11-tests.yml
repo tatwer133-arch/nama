@@ -5,6 +5,10 @@ on:
       - seega-royale-v11
   workflow_dispatch:
 
+concurrency:
+  group: seega-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
