@@ -9,7 +9,7 @@ import {friendCallsStart,friendCallsStop,friendCallDial,friendCallAnswer,friendC
 const $=sel=>document.querySelector(sel);
 const fmt=n=>new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(n??0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={me:null,tab:'home',room:null,rooms:[],store:[],config:null,friends:[],ranking:[],search:[],world:[],socket:null,selected:null,authView:'login',socialMode:'friends',dmId:null,dmMessages:[],voice:false,localStream:null,peer:null,iceQueue:[],busy:false,boardSize:[3,5,7,9].includes(Number(localStorage.getItem('seega_board_size')))?Number(localStorage.getItem('seega_board_size')):5,gameMode:localStorage.getItem('seega_game_mode')||'seega5',boardTilt:true,chatOpen:false,rankFilter:'coins',captureFx:null,giftFx:null,giftMenuOpen:false,lastFxSeq:null,unreadRoom:0,voicePending:false,voiceConsent:false,spectatorApproved:false,cloud:{online:false,friends:[],requests:[],inbox:[],publicChat:[],dm:[]},cloudSearch:null,friendVoice:null,pendingVoice:null,matchInvites:[],outgoingInvites:[],outgoingMatchId:null,searchRequestId:0,roomVoiceMuted:false};
+const state={me:null,tab:'home',room:null,rooms:[],store:[],config:null,friends:[],ranking:[],search:[],world:[],socket:null,selected:null,authView:'login',socialMode:'friends',dmId:null,dmMessages:[],voice:false,localStream:null,peer:null,iceQueue:[],busy:false,boardSize:[3,5,7,9].includes(Number(localStorage.getItem('seega_board_size')))?Number(localStorage.getItem('seega_board_size')):5,gameMode:localStorage.getItem('seega_game_mode')||'seega5',boardTilt:true,chatOpen:false,rankFilter:'coins',captureFx:null,giftFx:null,giftMenuOpen:false,lastFxSeq:null,unreadRoom:0,voicePending:false,voiceConsent:false,spectatorApproved:false,cloud:{online:false,friends:[],requests:[],inbox:[],publicChat:[],dm:[]},cloudSearch:null,friendVoice:null,pendingVoice:null,matchInvites:[],outgoingInvites:[],outgoingMatchId:null,searchRequestId:0,roomVoiceMuted:false,cloudSetupIssue:null};
 let toastTimer=null;
 function toast(m){const el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100);}
 async function api(path,options={}){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},credentials:'same-origin',...options});let data;try{data=await r.json();}catch{data={};}if(!r.ok)throw Error(data.error||'حصلت مشكلة في الاتصال');return data;}
@@ -173,7 +173,7 @@ function animateGiftToAvatar(gift){
  setTimeout(()=>layer.remove(),duration+1300);
 }
 function setMe(u){state.me=u;wallet();}
-function view(tab){state.tab=tab;state.room=null;state.selected=null;$('#topbar').classList.remove('hidden');$('#nav').classList.remove('hidden');document.querySelectorAll('[data-tab]').forEach(b=>{if(b.classList.contains('nav-item'))b.classList.toggle('active',b.dataset.tab===tab);});render();window.scrollTo(0,0);}
+function view(tab){if(tab!=='social'&&state.socialMode==='dm'&&state.cloud?.online){cloudCloseDirect();state.socialMode='friends';}state.tab=tab;state.room=null;state.selected=null;$('#topbar').classList.remove('hidden');$('#nav').classList.remove('hidden');document.querySelectorAll('[data-tab]').forEach(b=>{if(b.classList.contains('nav-item'))b.classList.toggle('active',b.dataset.tab===tab);});render();window.scrollTo(0,0);}
 function btn(text,action,cls='btn-primary'){return `<button class="btn ${cls}" data-action="${action}">${text}</button>`;}
 function cap(k){return {local:'على نفس الجهاز',online:'أونلاين مباشر',private:'خاصة',public:'عامة',vip:'ملكية VIP',quick:'تحدّي سريع',bot:'ضد الكمبيوتر'}[k]||k;}
 // V8 mobile-first home: the game starts above the fold; longer menus are dialogs.
@@ -323,7 +323,7 @@ async function challengeCloudPlayer(uid){
   throw error;
  }
 }
-function renderSocial(){return `<h1 class="page-title">💬 اللمة والصحاب</h1>${state.cloud?.online?renderCloudSocial():`<div class="demo-banner">☁️ الحسابات والأصدقاء والشات بين الأجهزة محتاجين تفعيل Firebase للمشروع. حسابات الضيف والإيميل المحلي مش متصلة بالشبكة.</div><div class="tabs"><button data-social="friends" class="${state.socialMode==='friends'?'active':''}">👥 معرّفات محفوظة</button><button data-social="search" class="${state.socialMode==='search'?'active':''}">🔎 حفظ ID</button></div>${state.socialMode==='search'?searchSection():friendsSection()}`}`;}
+function renderSocial(){return `<h1 class="page-title">💬 اللمة والصحاب</h1>${state.cloudSetupIssue?`<div class="cloud-setup-hint" role="status"><span>☁️ بعض خدمات Firebase تحتاج إعدادًا</span><button data-action="cloud-info" aria-label="تفاصيل إعداد Firebase">تفاصيل</button></div>`:''}${state.cloud?.online?renderCloudSocial():`<div class="demo-banner">☁️ الحسابات والأصدقاء والشات بين الأجهزة محتاجين تفعيل Firebase للمشروع. حسابات الضيف والإيميل المحلي مش متصلة بالشبكة.</div><div class="tabs"><button data-social="friends" class="${state.socialMode==='friends'?'active':''}">👥 معرّفات محفوظة</button><button data-social="search" class="${state.socialMode==='search'?'active':''}">🔎 حفظ ID</button></div>${state.socialMode==='search'?searchSection():friendsSection()}`}`;}
 function renderProfile(){const u=state.me,tier=Math.min(3,u.leagueTier||0),tierNames=['🥉 برونز','🥈 فضة','🥇 ذهب','💎 ماس'];return `<h1 class="page-title">👤 صفحتي</h1>
  <div class="profile-banner">${avatar(u,'large')}<h2>${esc(u.name)}</h2><small>${tierNames[tier]} · مستوى ${fmt(Math.floor(u.xp/500)+1)}</small>
  <div class="profile-id"><strong dir="ltr">${esc(u.id)}</strong><button type="button" data-action="copy-id">📋 انسخ الـID</button></div>
@@ -561,6 +561,7 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='test-audio'){unlockAudio();effect('victory',true);startMusic();if(!state.me?.settings?.music){const u=await patch('/me',{settings:{music:true,sound:true}});setMe(u.user);}toast('🔊 الصوت والموسيقى شغالين');render();if($('#modal-root .settings-popup'))showSettings();}
  else if(a==='rules')showRules();
  else if(a==='close-modal')closeModal();
+ else if(a==='cloud-info'){openModal('إعداد خدمات Firebase',`<p>${esc(state.cloudSetupIssue||'تحتاج بعض الخدمات لتفعيل قواعد Firestore.')}</p><p class="muted">اللعب كضيف وباقي خصائص اللعبة متاحة. لإصلاح الصلاحيات افتح قواعد Firestore وانشر نسخة الملف الموجودة في GitHub.</p><button data-action="close-modal" class="btn btn-secondary full">تمام</button>`);}
  else if(a==='logout'){stopMusic();if(state.room)await leaveRoom();await voiceOff();await friendCallsStop().catch(()=>{});await matchInvitesStop().catch(()=>{});await post('/auth/logout');if(firebaseReady()){await cloudSocialStop().catch(()=>{});await firebaseLogout().catch(()=>{});}state.socket?.disconnect();state.me=null;state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[],unread:0};state.matchInvites=[];state.outgoingInvites=[];state.outgoingMatchId=null;$('#auth-cover').classList.remove('hidden');updateSocialBadge();updateFriendVoiceBar();view('home');}
  else if(a==='cell')await doCell(Number(b.dataset.cell));
  else if(a==='share-room')shareRoom();
@@ -600,7 +601,7 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='cloud-search'){await cloudSearchIncremental($('#find-user')?.value);}
  else if(a==='cloud-add'){await cloudSendFriendRequest(b.dataset.uid);if(Array.isArray(state.cloudSearch))state.cloudSearch=state.cloudSearch.map(p=>p.uid===b.dataset.uid?{...p,relation:'sent'}:p);closeModal();toast('📨 بعت طلب الصداقة');render();}
  else if(a==='cloud-accept'||a==='cloud-reject'){await cloudRespondFriend(b.dataset.pair,a==='cloud-accept');toast(a==='cloud-accept'?'🤝 وافقت على الصداقة':'رفضت الطلب');}
- else if(a==='cloud-dm'){closeModal();state.socialMode='dm';state.cloud.dmOther=b.dataset.uid;cloudWatchDirect(b.dataset.uid);render();}
+ else if(a==='cloud-dm'){closeModal();state.tab='social';state.socialMode='dm';state.cloud.dmOther=b.dataset.uid;cloudWatchDirect(b.dataset.uid);render();}
  else if(a==='cloud-dm-back'){cloudCloseDirect();state.socialMode='friends';render();}
  else if(a==='cloud-profile'){await showCloudPlayer(b.dataset.uid);}
  else if(a==='cloud-challenge'){await challengeCloudPlayer(b.dataset.uid);}
@@ -706,19 +707,27 @@ async function authReady(u){
    // Only the local profile is available until protected cloud sync is enabled.
    if(u?.firebaseUid){
     state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[]};
-    toast('✅ تم تسجيل حسابك، لكن حفظ الصورة والـID والأصدقاء بين الأجهزة غير متاح حتى تفعيل Firestore وقواعد الحماية: '+e.message);
-   }else toast('المزامنة السحابية لم تكتمل: '+e.message);
+    state.cloudSetupIssue='حفظ البروفايل السحابي يحتاج قواعد Firestore: '+e.message;
+   }else state.cloudSetupIssue='المزامنة السحابية لم تكتمل: '+e.message;
   }
  }
  setMe(u);$('#auth-cover').classList.add('hidden');startSocket();state.config=await api('/config');state.store=state.config.items;if(state.me?.settings?.music)startMusic();else stopMusic();if(firebaseReady()&&state.me?.firebaseUid){
   cloudSocialStart(state.me,()=>state.room,data=>{state.cloud=data;updateSocialBadge();if(state.tab==='social'&&!state.room){if(state.socialMode==='search'){const host=$('#cloud-search-results');if(host)host.innerHTML=cloudSearchRows(state.cloudSearch);}else render();}},n=>{
-   if(n.kind==='error')return toast(n.text);notifyPlayer(n.text,{title:n.kind==='dm'?'رسالة جديدة':'إشعار من سيجا'});
+   if(n.kind==='setup'||n.kind==='error'){
+    state.cloudSetupIssue=n.text;
+    // Startup permission warnings are available in the friends tab, never as repeated full-screen toasts.
+    return;
+   }
+   if(n.kind==='dm'&&n.fromUid&&state.tab==='social'&&state.socialMode==='dm'&&state.cloud?.dmOther===n.fromUid&&!state.room){
+    return; // Already reading this exact conversation; messages render live, no reopen popup.
+   }
+   notifyPlayer(n.text,{title:n.kind==='dm'?'رسالة جديدة':'إشعار من سيجا'});
    if(n.roomCode&&n.id&&!state.room){openModal('📨 دعوة مباراة',`<p>${esc(n.text)}</p><button class="btn btn-primary full" data-action="accept-invite" data-code="${esc(n.roomCode)}" data-notice="${esc(n.id)}">✅ موافقة والدخول</button><button class="btn btn-secondary full" data-action="decline-invite" data-notice="${esc(n.id)}">❌ رفض</button>`);}
    if(n.kind==='dm'&&n.fromUid&&!state.room){
     const sender=(state.cloud?.friends||[]).find(f=>f.uid===n.fromUid);
     openModal('💬 رسالة من '+(sender?.user?.name||'صاحبك'),`<p>${esc(n.text)}</p><button class="btn btn-primary full" data-action="cloud-dm" data-uid="${esc(n.fromUid)}">افتح المحادثة</button><button class="btn btn-secondary full" data-action="close-modal">لاحقًا</button>`);
    }
-  }).catch(e=>toast('التواصل السحابي غير متاح: '+e.message));
+  }).catch(e=>{state.cloudSetupIssue='التواصل السحابي غير متاح: '+e.message;});
   matchInvitesStart({
    onIncoming:invite=>{
     if(state.room){notifyPlayer('🎲 طلب تحدي من '+(invite.fromName||'لاعب'),{title:'دعوة سيجا'});return;}
@@ -733,8 +742,8 @@ async function authReady(u){
     updateSocialBadge();if(state.tab==='social'&&!state.room&&state.socialMode==='friends')render();
     if(state.room?.kind==='online'&&state.room.status==='waiting')render();
    },
-   onStatus:msg=>{if(msg.kind==='error')toast(msg.text);else notifyPlayer(msg.text);}
-  }).catch(e=>toast('دعوات المباراة تحتاج صلاحيات Firestore المحدثة: '+e.message));
+   onStatus:msg=>{if(msg.kind==='error'){state.cloudSetupIssue=msg.text;return;}notifyPlayer(msg.text);}
+  }).catch(e=>{state.cloudSetupIssue='دعوات المباراة تحتاج صلاحيات Firestore المحدثة: '+e.message;});
   friendCallsStart({
    onIncoming:({id,uid})=>{
     state.pendingVoice={id,uid};
@@ -744,8 +753,8 @@ async function authReady(u){
     openModal('📞 مكالمة من '+name,`<p>صديقك بيطلب اتصال صوتي. الميكروفون مش هيفتح إلا بعد موافقتك.</p><div class="call-buttons"><button class="btn btn-mint" data-action="friend-call-accept">✅ رد</button><button class="btn btn-secondary" data-action="friend-call-decline">❌ رفض</button></div>`);
    },
    onChange:call=>{state.friendVoice=call;updateFriendVoiceBar();},
-   onNotice:message=>toast(message)
-  }).catch(e=>toast('مكالمات الأصدقاء تحتاج قواعد Firestore المحدثة: '+e.message));
+   onNotice:message=>{if(/Firebase|Firestore|permissions|قواعد|الصلاحيات/i.test(message)){state.cloudSetupIssue=message;return;}toast(message);}
+  }).catch(e=>{state.cloudSetupIssue='مكالمات الأصدقاء تحتاج قواعد Firestore المحدثة: '+e.message;});
  }
  const match=location.pathname.match(/^\/(room|invite|watch)\/([A-Za-z0-9]{6})$/);const id=match?.[2];if(id){try{if(match[1]==='watch')await watchRoom(id);else await joinRoom(id);}catch(e){toast(e.message);window.history.replaceState({},'','/');view('home');}}else view('home');}
 $('#auth-form').addEventListener('submit',async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));try{unlockAudio();let r;
