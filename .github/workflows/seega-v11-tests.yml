@@ -20,4 +20,7 @@ jobs:
       - name: Run gameplay and cloud contract tests
         run: |
           node --version
+          node --check public/app.js
+          node --check public/cloud-social.js
+          node --check public/friend-call.js
           node --test tests*.mjs
