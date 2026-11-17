@@ -365,3 +365,38 @@ body{position:fixed;inset:0;width:100%;height:100dvh}
 .room-quickbar{display:flex;gap:4px!important;max-width:100%;align-items:center;justify-content:center;flex-wrap:wrap}.room-quickbar .btn{padding:5px 7px!important;font-size:10px!important;min-height:30px!important}
 @media(max-width:390px){.gift-grid{gap:5px}.gift-tile{min-height:76px}.gift-tile>span{font-size:25px}.gift-tile>b{font-size:10px}.friend-actions button{font-size:16px;padding:4px 5px}.room-quickbar .btn{padding:4px!important;font-size:9px!important}}
 .viewer-strip .avatar-icon.viewer-mini{display:inline-flex;vertical-align:middle;width:18px!important;height:18px!important;font-size:13px!important;margin:0 2px;border:1px solid #f3c579}
+
+/* V11 social refinements: keep the established Royale palette and mobile layout. */
+.nav-item[data-tab="social"]{position:relative}
+.social-alert-badge{position:absolute;top:-5px;right:16%;min-width:20px;height:20px;padding:1px 5px;border-radius:20px;border:2px solid #211320;background:#e42b44;color:white;font:900 11px/16px Cairo,Tahoma,sans-serif;text-align:center;box-shadow:0 2px 8px #0008;z-index:3}
+.friend-person{border:0;background:transparent;color:inherit;display:flex;gap:9px;align-items:center;text-align:right;flex:1;min-width:0;padding:0;cursor:pointer}
+.friend-person>span:last-child{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden}
+.friend-person b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.friend-person small{color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.friend-person .avatar-icon{width:42px;height:42px;flex:none}
+.friend-actions{display:flex;align-items:center;gap:5px;flex:none}
+.friend-actions>button{position:relative;background:#3b2c3c;border:1px solid #8b6474;color:#f6dfc4;border-radius:12px;min-width:36px;height:38px;font-size:18px;cursor:pointer}
+.friend-actions>button:focus-visible,.friend-person:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.mini-count{position:absolute;top:-7px;right:-5px;background:#e52c42;color:white;font-size:10px;min-width:17px;height:17px;padding:1px 3px;border-radius:20px;line-height:15px}
+.cloud-friend .avatar-photo,.msg .avatar-photo,.dm-header .avatar-photo{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.dm-header{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:13px}
+.dm-header .btn{font-size:11px;flex:none;padding:8px 9px}
+.cloud-player-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+.cloud-player-actions .btn{flex:1;min-width:120px}
+.msg-person{display:flex;align-items:center;flex-direction:column;gap:2px;flex:none;max-width:80px}
+.msg .chat-person{display:flex;align-items:center;flex-direction:column;gap:2px;background:none;border:0;color:#f9e6c3;cursor:default;font:inherit;max-width:80px;min-width:54px;padding:0;text-align:center}
+.msg button.chat-person{cursor:pointer}
+.msg .chat-person b{font-size:10px;line-height:1.3;max-width:78px;overflow-wrap:anywhere}
+.msg .avatar-icon{width:34px;height:34px;font-size:19px;border-width:1px}
+.chat-presence{font-size:9px;color:#bdadb0;white-space:nowrap}
+.chat-presence.yes{color:#70e1bb}
+.msg .msg-box{flex:1;min-width:0;max-width:calc(100% - 78px);margin-top:5px}
+.chat-challenge{display:block;margin-top:7px;border:1px solid #b58b56;border-radius:8px;background:#523a33;color:#ffdfac;font-size:10px;font-weight:800;padding:4px 8px}
+#friend-call-banner{position:fixed;z-index:80;right:50%;transform:translateX(50%);bottom:calc(74px + env(safe-area-inset-bottom));width:min(96vw,620px);display:none;background:linear-gradient(120deg,#473044,#211b32);border:2px solid #d3a869;border-radius:18px;box-shadow:0 12px 35px #000b;padding:9px 10px;gap:8px;align-items:center;justify-content:space-between}
+#friend-call-banner.visible{display:flex}
+.friend-call-label{display:flex;flex-direction:column;min-width:78px;font-size:12px}
+.friend-call-label b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:165px}
+.friend-call-label small{font-size:9px;color:#efcc9f}
+.friend-call-buttons{display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.friend-call-buttons .btn{font-size:10px;padding:7px 8px}
+@media(max-width:420px){.friend-actions{gap:3px}.friend-actions>button{min-width:32px;width:33px;height:35px;font-size:16px}.friend-person .avatar-icon{width:36px;height:36px}.friend-person{gap:6px}.friend-call-label b{max-width:100px}.friend-call-buttons .btn{font-size:10px;padding:7px}.msg-person{max-width:60px}.msg .msg-box{max-width:calc(100% - 62px)}}
