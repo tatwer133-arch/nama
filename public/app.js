@@ -503,7 +503,7 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='cloud-search'){state.cloudSearch=await cloudSearchPlayer($('#find-user')?.value);render();}
  else if(a==='cloud-add'){await cloudSendFriendRequest(b.dataset.uid);state.cloudSearch=null;closeModal();toast('📨 بعت طلب الصداقة');render();}
  else if(a==='cloud-accept'||a==='cloud-reject'){await cloudRespondFriend(b.dataset.pair,a==='cloud-accept');toast(a==='cloud-accept'?'🤝 وافقت على الصداقة':'رفضت الطلب');}
- else if(a==='cloud-dm'){state.socialMode='dm';state.cloud.dmOther=b.dataset.uid;cloudWatchDirect(b.dataset.uid);render();}
+ else if(a==='cloud-dm'){closeModal();state.socialMode='dm';state.cloud.dmOther=b.dataset.uid;cloudWatchDirect(b.dataset.uid);render();}
  else if(a==='cloud-dm-back'){cloudCloseDirect();state.socialMode='friends';render();}
  else if(a==='cloud-profile'){await showCloudPlayer(b.dataset.uid);}
  else if(a==='cloud-challenge'){await challengeCloudPlayer(b.dataset.uid);}
