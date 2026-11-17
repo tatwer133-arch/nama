@@ -351,7 +351,7 @@ function canMove(g,i,from){if(from===null)return false;if(g.board[i]!==0)return 
 function currentModeLabel(){return GAME_CATALOG.find(g=>g.id===state.gameMode)?.name||'السيجا المصرية';}
 function roomControls(){
  const r=state.room;if(!r)return '';
- return `<div class="room-quickbar">${r.watchOnly?`<span class="peer-state connected">👀 مشاهدة فقط · ${(r.viewers||[]).length} مشاهد</span><span class="pill">ممنوع التحريك والفويس</span>`:r.kind==='online'?`<span class="peer-state ${r.status==='playing'?'connected':''}">${r.status==='playing'?'🟢 متصل':'🟠 بانتظار المنافس'}</span><button data-action="share-room" class="btn btn-mint">📨 ادعُ لاعب ${r.id}</button><button class="btn btn-secondary" data-action="voice">${state.voice?'🎤 اقفل المايك':state.voicePending?'⌛ طلب المايك':'📞 اتصال صوتي'}</button>${r.owner===state.me.id?`<button class="btn btn-secondary" data-action="toggle-spectators" title="السماح للمشاهدين">${r.allowSpectators?'👀 اقفل المشاهدة':'👁️ افتح المشاهدة'}</button>`:''}${r.allowSpectators?`<button class="btn btn-secondary" data-action="share-watch">🔗 لينك المشاهدة</button>`:''}<button class="btn btn-secondary" data-action="quick-social" title="الأصدقاء والشات العام">👥 الأصدقاء</button>`:''}<span class="board-3d-badge">✦ 3D</span></div>${r.kind==='online'&&r.status==='waiting'?`<div class="wait-panel">📡 الغرفة مفتوحة — ابعت لصاحبك اللينك وسيب الصفحة مفتوحة.<br><b dir="ltr">${esc(location.origin+'/room/'+r.id)}</b><br><button data-action="share-room" class="btn btn-primary">📋 نسخ الدعوة</button></div>`:''}`;
+ return `<div class="room-quickbar">${r.watchOnly?`<span class="peer-state connected">👀 مشاهدة فقط · ${(r.viewers||[]).length} مشاهد</span><span class="pill">ممنوع التحريك والفويس</span>`:r.kind==='online'?`<span class="peer-state ${r.status==='playing'?'connected':''}">${r.status==='playing'?'🟢 متصل':'🟠 بانتظار المنافس'}</span><button data-action="share-room" class="btn btn-mint">📨 ادعُ لاعب ${r.id}</button><button class="btn btn-secondary" data-action="voice">${state.voice?'📴 إنهاء المكالمة':state.voicePending?'⌛ طلب المايك':'📞 اتصال صوتي'}</button>${state.voice?`<button class="btn btn-secondary" data-action="room-voice-mute" aria-pressed="${state.roomVoiceMuted}" aria-label="${state.roomVoiceMuted?'فتح الميكروفون':'كتم الميكروفون'}">${state.roomVoiceMuted?'🔇 مكتوم — فتح':'🎙️ كتم المايك'}</button>`:''}${r.owner===state.me.id?`<button class="btn btn-secondary" data-action="toggle-spectators" title="السماح للمشاهدين">${r.allowSpectators?'👀 اقفل المشاهدة':'👁️ افتح المشاهدة'}</button>`:''}${r.allowSpectators?`<button class="btn btn-secondary" data-action="share-watch">🔗 لينك المشاهدة</button>`:''}<button class="btn btn-secondary" data-action="quick-social" title="الأصدقاء والشات العام">👥 الأصدقاء</button>`:''}<span class="board-3d-badge">✦ 3D</span></div>${r.kind==='online'&&r.status==='waiting'?`<div class="wait-panel">📡 الغرفة مفتوحة — ابعت لصاحبك اللينك وسيب الصفحة مفتوحة.<br><b dir="ltr">${esc(location.origin+'/room/'+r.id)}</b><br><button data-action="share-room" class="btn btn-primary">📋 نسخ الدعوة</button></div>`:''}`;
 }
 function floatingChat(){
  const r=state.room;if(!r)return '';
@@ -433,10 +433,10 @@ function startSocket(){if(state.socket){state.socket.disconnect();}const s=state
  s.on('dm:new',m=>{if(state.dmId===(m.sender===state.me.id?m.receiver:m.sender)){state.dmMessages.push(m);const el=$('#dm-messages');if(el){el.innerHTML+=messageMarkup(m,true);el.scrollTop=el.scrollHeight;}}});
  s.on('wallet:update',u=>{if(u?.id===state.me.id){setMe(u);if(!state.room)render();}});
  s.on('voice:peer-joined',async({uid})=>{toast('منافسك دخل المايك');if(!state.voice||state.room?.kind!=='online'||state.room?.players[0]?.id!==state.me.id)return;try{const pc=buildPeer(uid);const offer=await pc.createOffer();await pc.setLocalDescription(offer);await emit('voice:signal',{id:state.room.id,to:uid,data:{sdp:pc.localDescription}});}catch(e){toast('تعذّر بدء الصوت');}});
- s.on('voice:peer-left',()=>{closePeer();toast('منافسك قفل المايك');});
+ s.on('voice:peer-left',()=>{voiceOff().catch(()=>{});toast('منافسك قفل المكالمة');render();});
  s.on('voice:signal',onVoiceSignal);
  s.on('voice:incoming',({from})=>{state.voicePending=false;openModal('📞 اتصال صوتي من '+(from||'المنافس'),'<div class="call-request"><p>منافسك بيطلب يفتح المايك معاك. تقبل المكالمة؟</p><div class="call-buttons"><button class="btn btn-mint" data-action="accept-call">✅ موافقة</button><button class="btn btn-secondary" data-action="reject-call">❌ رفض</button></div></div>');notifyPlayer('📞 '+(from||'المنافس')+' عايز يكلمك');});
- s.on('voice:accepted',async()=>{if(!state.voicePending)return;closeModal();state.voicePending=false;try{await startVoiceSession();toast('🎤 المنافس وافق على المكالمة');}catch(e){toast(e.message);}});
+ s.on('voice:accepted',async()=>{if(!state.voicePending)return;closeModal();state.voicePending=false;try{await startVoiceSession();toast('🎤 المنافس وافق على المكالمة');render();}catch(e){toast(e.message);render();}});
  s.on('voice:rejected',()=>{state.voicePending=false;closeModal();notifyPlayer('❌ المنافس رفض المكالمة');});
  s.on('voice:cancelled',()=>{closeModal();toast('📞 المنافس ألغى طلب المكالمة');});
  s.on('spectator:request',()=>{openModal('👀 طلب مشاهدة المباراة','<p>صاحب الغرفة عايز يفتح المشاهدة. تسمح للناس يشوفوا اللوحة والشات ويسمعوا الصوت لو المايك شغال؟</p><div class="call-buttons"><button class="btn btn-mint" data-action="spectator-approve">✅ موافق</button><button class="btn btn-secondary" data-action="spectator-deny">❌ رفض</button></div>');});
@@ -445,7 +445,7 @@ function startSocket(){if(state.socket){state.socket.disconnect();}const s=state
  s.on('reconnect',()=>{if(state.room)subscribeRoom();});
 }
 function subscribeRoom(){if(!state.socket?.connected||!state.room)return;state.socket.emit('room:subscribe',{id:state.room.id},r=>{if(r?.room){state.room=r.room;render();}});}
-async function enterRoom(r){state.selected=null;state.captureFx=null;state.giftMenuOpen=false;state.giftFx=null;state.lastFxSeq=null;state.room=r;state.voice=false;state.voicePending=false;state.chatOpen=false;state.unreadRoom=0;render();cloudPresence().catch(()=>{});if(state.socket.connected)subscribeRoom();else state.socket.once('connect',subscribeRoom);window.history.replaceState({},'',`${r.watchOnly?'/watch/':'/room/'}${r.id}`);window.scrollTo(0,0);}
+async function enterRoom(r){state.selected=null;state.captureFx=null;state.giftMenuOpen=false;state.giftFx=null;state.lastFxSeq=null;state.room=r;state.voice=false;state.roomVoiceMuted=false;state.voicePending=false;state.chatOpen=false;state.unreadRoom=0;render();cloudPresence().catch(()=>{});if(state.socket.connected)subscribeRoom();else state.socket.once('connect',subscribeRoom);window.history.replaceState({},'',`${r.watchOnly?'/watch/':'/room/'}${r.id}`);window.scrollTo(0,0);}
 async function createRoom(kind){const data=await post(kind==='bot'?'/bot':kind==='local'?'/local':kind==='quick'?'/quick':'/rooms',{kind,size:state.boardSize,mode:state.gameMode});enterRoom(data.room);if(data.room.kind==='online')toast('ابعت كود الغرفة لصاحبك وسيب الصفحة مفتوحة');}
 async function joinRoom(id){if(!id||id.length!==6)throw Error('اكتب كود الغرفة المكون من ٦ رموز');const data=await post(`/rooms/${id.toUpperCase()}/join`);enterRoom(data.room);}
 async function watchRoom(id){if(!id||id.length!==6)throw Error('كود الغرفة غير صحيح');const data=await post(`/rooms/${id.toUpperCase()}/watch`);enterRoom(data.room);}
@@ -575,7 +575,7 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='toggle-spectators'){const allow=!state.room?.allowSpectators;const out=await emit('spectator:toggle',{allow});toast(out.pending?'👀 مستنيين موافقة المنافس':allow?'المشاهدة اتفتحت':'المشاهدة اتقفلت');}
  else if(a==='spectator-approve'){await emit('spectator:response',{accept:true});closeModal();toast('المشاهدة اتفتحت للمباراة');}
  else if(a==='spectator-deny'){await emit('spectator:response',{accept:false});closeModal();toast('رفضت المشاهدة');}
- else if(a==='accept-call'){closeModal();await emit('voice:response',{accept:true});try{await startVoiceSession();}catch(e){toast(e.message);await emit('voice:leave',{id:state.room?.id}).catch(()=>{});}}
+ else if(a==='accept-call'){closeModal();await emit('voice:response',{accept:true});try{await startVoiceSession();render();}catch(e){toast(e.message);await emit('voice:leave',{id:state.room?.id}).catch(()=>{});render();}}
  else if(a==='reject-call'){closeModal();await emit('voice:response',{accept:false});toast('رفضت المكالمة');}
  else if(a==='cancel-call'){state.voicePending=false;await emit('voice:cancel',{id:state.room?.id});closeModal();toast('اتلغى الطلب');}
  else if(a==='enable-notifications'){if(!('Notification' in window))return toast('المتصفح لا يدعم إشعارات النظام');const permission=await Notification.requestPermission();toast(permission==='granted'?'🔔 تم تفعيل إشعارات المتصفح':'هنظهر التنبيهات داخل اللعبة فقط');}
@@ -589,7 +589,15 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='friend-call'){
   const friend=(state.cloud?.friends||[]).find(f=>f.uid===b.dataset.uid);
   if(!friend?.online)throw Error('صاحبك غير متصل حاليًا');
-  closeModal();await friendCallDial(friend.uid,friend.user.name);toast('📞 جاري الاتصال بـ '+friend.user.name);
+  closeModal();
+  // In a live match, use the established room voice handshake. Both players
+  // consent and each gets an independent mute control.
+  if(state.room?.kind==='online'){
+   if(state.room.status!=='playing')throw Error('اتصال الماتش يبدأ لما صاحبك يدخل الغرفة');
+   await requestVoice();return;
+  }
+  await friendCallDial(friend.uid,friend.user.name);
+  toast('📞 جاري الاتصال بـ '+friend.user.name);
  }
  else if(a==='friend-call-accept'){
   const pending=state.pendingVoice;state.pendingVoice=null;closeModal();
@@ -604,6 +612,12 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='cloud-invite'){if(!state.room||state.room.kind!=='online')return toast('اعمل غرفة أونلاين الأول');await cloudSendInbox(b.dataset.uid,'invite',playerName()+' بعت لك دعوة لمباراة سيجا',state.room.id);toast('📨 الدعوة اتبعتت');}
  else if(a==='publish-room'){if(!state.room||state.room.kind!=='online')return;await cloudPostPublic('🎲 ادخل نافسني في سيجا رويال',state.room.id);toast('📢 الدعوة ظهرت في الشات العام');}
  else if(a==='leave-room')await leaveRoom();
+ else if(a==='room-voice-mute'){
+  if(!state.voice||!state.localStream)return toast('ابدأ المكالمة الأول');
+  state.roomVoiceMuted=!state.roomVoiceMuted;
+  for(const t of state.localStream.getAudioTracks())t.enabled=!state.roomVoiceMuted;
+  toast(state.roomVoiceMuted?'🔇 المايك اتكتم عندك فقط':'🎤 المايك مفتوح عندك');render();
+ }
  else if(a==='voice'){if(state.voice)await voiceOff();else await requestVoice();render();}
  }catch(e){toast(e.message);}}
 async function onForm(form){try{if(form.id==='profile-form'){const v=await patch('/me',{name:new FormData(form).get('name')});setMe(v.user);toast('اتحفظت التغييرات');render();}
@@ -649,7 +663,8 @@ async function requestVoice(){if(state.room?.watchOnly)return toast('المشا�
 async function startVoiceSession(){if(!state.room||state.room.status!=='playing'||state.room.players.some(p=>p?.id==='bot'))throw Error('الصوت متاح للجولات بين لاعبين حقيقيين');
  if(!navigator.mediaDevices?.getUserMedia)throw Error('لازم تفتح الموقع بـ HTTPS علشان الميكروفون يشتغل');
  state.localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:false});
- try{const r=await emit('voice:join',{id:state.room.id});state.voice=true;state.voicePending=false;toast('🎤 المايك شغال — اضغط تاني للقفل');window.seegaSpectatorMedia?.broadcast(state.localStream);
+ state.roomVoiceMuted=false;state.localStream.getAudioTracks().forEach(t=>t.enabled=true);
+ try{const r=await emit('voice:join',{id:state.room.id});state.voice=true;state.voicePending=false;toast('🎤 المكالمة اتفتحت — لكل لاعب زر كتم مستقل');render();window.seegaSpectatorMedia?.broadcast(state.localStream);
   if(r.peers?.length){const pc=buildPeer(r.peers[0]);const offer=await pc.createOffer();await pc.setLocalDescription(offer);await emit('voice:signal',{id:state.room.id,to:r.peers[0],data:{sdp:pc.localDescription}});}
  }catch(e){await voiceOff();throw e;}
 }
@@ -659,7 +674,7 @@ async function onVoiceSignal({id,from,data}){if(!state.voice||!state.room||state
   if(data.sdp.type==='offer'){const answer=await pc.createAnswer();await pc.setLocalDescription(answer);state.socket.emit('voice:signal',{id,to:from,data:{sdp:pc.localDescription}});}}
  else if(data.candidate){if(pc.remoteDescription)await pc.addIceCandidate(new RTCIceCandidate(data.candidate));else state.iceQueue.push(new RTCIceCandidate(data.candidate));}
  }catch(e){console.warn('Voice signaling',e);toast('اتصال الصوت اتعطّل');}}
-async function voiceOff(){if(state.room)state.socket?.emit('voice:leave',{id:state.room.id});for(const track of state.localStream?.getTracks()||[])track.stop();state.localStream=null;state.voice=false;state.voicePending=false;window.seegaSpectatorMedia?.stop();closePeer();}
+async function voiceOff(){if(state.room)state.socket?.emit('voice:leave',{id:state.room.id});for(const track of state.localStream?.getTracks()||[])track.stop();state.localStream=null;state.voice=false;state.roomVoiceMuted=false;state.voicePending=false;window.seegaSpectatorMedia?.stop();closePeer();}
 function authView(v){state.authView=v;document.querySelectorAll('[data-auth-view]').forEach(b=>b.classList.toggle('selected',b.dataset.authView===v));$('#auth-name-wrap').classList.toggle('hidden',v==='login');$('#auth-submit').textContent=v==='login'?'يلا ندخل نلعب':'أنشئ حسابي';$('#auth-form [name="password"]').autocomplete=v==='login'?'current-password':'new-password';}
 async function authReady(u){
  if(firebaseReady()){
