@@ -1,6 +1,6 @@
 import {variantActions,chineseLayout,GAME_CATALOG} from './variants.js';
 import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js';
-import {mount3D,reset3D} from './scene3d.js?v=10';
+import {mount3D,reset3D} from './scene3d.js?v=11';
 import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js';
 import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js';
 import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic} from './cloud-social.js';
@@ -491,7 +491,14 @@ async function authReady(u){
    if(current?.uid&&u?.firebaseUid===current.uid){
     const remote=await cloudReadOrCreate(u),saved=await post('/me/cloud-sync',{profile:remote});u=saved.user;
    }
-  }catch(e){if(u?.firebaseUid)throw Error('دخلت بالحساب لكن مزامنة البيانات السحابية غير متاحة: '+e.message+' — فعّل Firestore وانشر قواعد الحماية.');toast('المزامنة السحابية لم تكتمل: '+e.message);}
+  }catch(e){
+   // Authentication succeeded; a missing Firestore database must not trap the player at the login screen.
+   // Only the local profile is available until protected cloud sync is enabled.
+   if(u?.firebaseUid){
+    state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[]};
+    toast('✅ تم تسجيل حسابك، لكن حفظ الصورة والـID والأصدقاء بين الأجهزة غير متاح حتى تفعيل Firestore وقواعد الحماية: '+e.message);
+   }else toast('المزامنة السحابية لم تكتمل: '+e.message);
+  }
  }
  setMe(u);$('#auth-cover').classList.add('hidden');startSocket();state.config=await api('/config');state.store=state.config.items;if(state.me?.settings?.music)startMusic();else stopMusic();if(firebaseReady()&&state.me?.firebaseUid){
   cloudSocialStart(state.me,()=>state.room,data=>{state.cloud=data;if(state.tab==='social'&&!state.room)render();},n=>{
@@ -511,7 +518,7 @@ $('#guest-login').addEventListener('click',async()=>{unlockAudio();try{if(fireba
 $('#google-login').addEventListener('click',async()=>{unlockAudio();try{const profile=await firebaseSignIn('google');const r=await post('/auth/federated',profile);await authReady(r.user);}catch(e){toast(e.message);}});
 $('#facebook-login').addEventListener('click',async()=>{unlockAudio();try{const profile=await firebaseSignIn('facebook');const r=await post('/auth/federated',profile);await authReady(r.user);}catch(e){toast(e.message);}});
 document.addEventListener('pointerdown',()=>{unlockGiftAudio();unlockAudio();if(state.me?.settings?.music)startMusic();},{capture:true,passive:true});
-(async function boot(){try{if(firebaseReady()){const note=$('.auth-local-notice');if(note)note.textContent='☁️ إعداد Firebase متوصل بالكود. بعد تفعيل طرق الدخول وإنشاء Firestore ونشر قواعد الأمان، هتتزامن الصورة والـ ID والاسم بين الأجهزة. رصيد الكوينز والترتيب لا يزال محليًا.';}state.config=await api('/config');state.store=state.config.items;const r=await api('/me');if(r.user){
+(async function boot(){try{if(firebaseReady()){const note=$('.auth-local-notice');if(note)note.textContent='☁️ تسجيل جوجل يحتاج تفعيل Google في Firebase وAuthorized domains. الحسابات الحقيقية ممكن تدخل، لكن مزامنة الصورة والـ ID والأصدقاء لا تعمل قبل إنشاء Firestore ونشر قواعد الحماية. العملات والترتيب محليان.';}state.config=await api('/config');state.store=state.config.items;const r=await api('/me');if(r.user){
   if(firebaseReady()){
    const cloud=await firebaseCurrent();
    if(cloud?.uid&&cloud.uid!==r.user.firebaseUid){

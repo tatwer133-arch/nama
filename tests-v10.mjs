@@ -15,16 +15,16 @@ test('Firebase app config is connected to user supplied project without private 
  assert.doesNotMatch(configSource,/-----BEGIN PRIVATE KEY-----|service_account|private_key|client_secret/i);
 });
 
-test('V10 loads fresh assets and Firebase web Auth',()=>{
+test('V11 loads fresh assets and Firebase web Auth',()=>{
  const html=src('./public/index.html'),adapter=src('./public/offline-adapter.js'),app=src('./public/app.js');
- assert.match(html,/styles\.css\?v=10/);
- assert.match(html,/offline-adapter\.js\?v=10/);
- assert.match(adapter,/await import\('\.\/app\.js\?v=10'\)/);
- assert.match(app,/scene3d\.js\?v=10/);
+ assert.match(html,/styles\.css\?v=11/);
+ assert.match(html,/offline-adapter\.js\?v=11/);
+ assert.match(adapter,/await import\('\.\/app\.js\?v=11'\)/);
+ assert.match(app,/scene3d\.js\?v=11/);
  assert.match(app,/firebaseEmail\(/);
  assert.match(app,/cloudReadOrCreate\(/);
  assert.match(app,/cloudSocialStart\(/);
- assert.match(src('./public/firebase-auth.js'),/firebase-config\.js\?v=10/);
+ assert.match(src('./public/firebase-auth.js'),/firebase-config\.js\?v=11/);
 });
 
 test('Cloud profile uses authenticated uid and stable id, not client controlled wallet',()=>{

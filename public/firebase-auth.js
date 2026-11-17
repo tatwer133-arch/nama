@@ -1,4 +1,4 @@
-import {firebaseConfig} from './firebase-config.js?v=10';
+import {firebaseConfig} from './firebase-config.js?v=11';
 export const firebaseReady=()=>Boolean(firebaseConfig?.apiKey&&firebaseConfig?.authDomain&&firebaseConfig?.projectId&&firebaseConfig?.appId);
 let authInit=null;
 export async function firebaseSdk(){
@@ -9,7 +9,7 @@ export async function firebaseSdk(){
    import('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js')]);
   const app=getApps().length?getApp():initializeApp(firebaseConfig);
   return{auth:mod.getAuth(app),mod};
- })();
+ })().catch(err=>{authInit=null;throw err;});
  return authInit;
 }
 export async function firebaseSignIn(kind){
@@ -23,8 +23,11 @@ export async function firebaseSignIn(kind){
   if(!u?.uid)throw Error('فشل التحقق من حسابك');
   return{provider:kind,uid:u.uid,email:u.email||null,name:u.displayName||'لاعب سيجا',photoURL:u.photoURL||null};
  }catch(e){
-  if(e?.code==='auth/popup-blocked'||e?.code==='auth/cancelled-popup-request')throw Error('المتصفح منع نافذة الدخول. جرّب تسمح بالنوافذ المنبثقة.');
-  if(e?.code==='auth/unauthorized-domain')throw Error('عنوان اللعبة مش مضاف لدومينات Firebase المصرح بها.');
+  if(['auth/popup-blocked','auth/cancelled-popup-request','auth/popup-closed-by-user'].includes(e?.code))throw Error('نافذة تسجيل الدخول اتقفلت أو المتصفح منعها. افتح السيجا في Chrome مباشرة وجرّب تاني.');
+  if(e?.code==='auth/unauthorized-domain')throw Error('لازم تضيف seega-royale-eg.vercel.app في Firebase Authentication ← Settings ← Authorized domains.');
+  if(e?.code==='auth/operation-not-allowed')throw Error('طريقة تسجيل الدخول دي غير مفعّلة في Firebase Authentication.');
+  if(e?.code==='auth/operation-not-supported-in-this-environment')throw Error('المتصفح الداخلي لا يدعم تسجيل جوجل. افتح رابط اللعبة باستخدام Chrome العادي.');
+  if(e?.code==='auth/network-request-failed')throw Error('تعذر الاتصال بـ Firebase؛ تأكد من الإنترنت وجرّب مرة أخرى.');
   if(e?.code==='auth/account-exists-with-different-credential')throw Error('الإيميل مستخدم بطريقة دخول تانية.');
   throw Error('الدخول ما اكتملش: '+String(e?.message||'راجع إعدادات مزود الدخول'));
  }
