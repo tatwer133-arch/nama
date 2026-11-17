@@ -9,10 +9,10 @@ const cleanRoom=s=>/^[A-Z0-9]{6}$/.test(String(s||'').toUpperCase())?String(s).t
 const validID=s=>/^SG-[A-F0-9]{10}$/.test(String(s||'').toUpperCase());
 const rawPhoto=x=>typeof x==='string'&&/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(x)&&x.length<170000?x:null;
 const tm=x=>x?.toMillis?.()||0;
-const info={friends:[],requests:[],publicChat:[],inbox:[],dm:[],dmOther:null,online:false,unread:0};
+const info={friends:[],requests:[],sentRequests:[],publicChat:[],inbox:[],dm:[],dmOther:null,online:false,unread:0};
 function push(){
  info.unread=info.requests.length+info.inbox.filter(x=>!x.read&&x.kind==='dm').length;
- onUpdate({...info,friends:info.friends.map(x=>({...x})),requests:[...info.requests],publicChat:[...info.publicChat],inbox:[...info.inbox],dm:[...info.dm]});
+ onUpdate({...info,friends:info.friends.map(x=>({...x})),requests:[...info.requests],sentRequests:[...info.sentRequests],publicChat:[...info.publicChat],inbox:[...info.inbox],dm:[...info.dm]});
 }
 async function decoratePublic(messages){
  const {fs,db}=ctx,now=Date.now();
@@ -70,6 +70,7 @@ async function refreshFriends(){const {fs,db}=ctx;
   const d=await fs.getDoc(fs.doc(db,'directory',x.fromUid));const data=d.exists()?d.data():{};
   return {...x,user:{name:data.name||'لاعب سيجا',avatar:data.avatar||'🎮',photo:rawPhoto(data.photo),id:data.id||''}};
  }));
+ info.sentRequests=requests.filter(x=>x.status==='pending'&&x.fromUid===userId);
  const accepted=requests.filter(x=>x.status==='accepted');
  const friends=await Promise.all(accepted.map(async x=>{
   const uid=x.fromUid===userId?x.toUid:x.fromUid;
@@ -157,28 +158,41 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
 export async function cloudSocialStop(){
  if(heartbeat)clearInterval(heartbeat);heartbeat=null;for(const f of stopFns.splice(0))try{f();}catch{}for(const f of presenceWatchers.values())try{f();}catch{}presenceWatchers.clear();for(const f of chatPresenceWatchers.values())try{f();}catch{}chatPresenceWatchers.clear();
  if(ctx&&userId){const {fs,db}=ctx;await fs.setDoc(fs.doc(db,'presence',userId),{status:'offline',roomCode:'',watchAllowed:false,lastSeen:fs.serverTimestamp()},{merge:true}).catch(()=>{});}
- ctx=null;userId=null;info.online=false;info.friends=[];info.requests=[];info.dm=[];info.dmOther=null;info.publicChat=[];info.inbox=[];info.unread=0;profileCache.clear();push();
+ ctx=null;userId=null;info.online=false;info.friends=[];info.requests=[];info.sentRequests=[];info.dm=[];info.dmOther=null;info.publicChat=[];info.inbox=[];info.unread=0;profileCache.clear();push();
 }
 export async function cloudSearchPlayer(s){
  const {fs,db}=await init(),term=sanitize(s);let docs=[];
  if(validID(term)){
-  const snap=await fs.getDocs(fs.query(fs.collection(db,'directory'),fs.where('id','==',term.toUpperCase()),fs.limit(1)));docs=snap.docs;
+  const found=await fs.getDocs(fs.query(fs.collection(db,'directory'),fs.where('id','==',term.toUpperCase()),fs.limit(1)));
+  docs=found.docs;
  }else if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(term)){
   const idx=await fs.getDoc(fs.doc(db,'emailIndex',term.toLowerCase()));
-  if(idx.exists()){const profile=await fs.getDoc(fs.doc(db,'directory',idx.data().uid));if(profile.exists())docs=[profile];}
-  if(!docs.length)throw Error('الإيميل غير موجود في دليل اللاعبين. صاحب الحساب لازم يسجل دخول بعد التحديث علشان يظهر في البحث.');
+  if(idx.exists()){
+   const pub=await fs.getDoc(fs.doc(db,'directory',idx.data().uid));
+   if(pub.exists())docs=[pub];
+  }
+  if(!docs.length)throw Error('الإيميل مش ظاهر في دليل اللاعبين؛ صاحبه لازم يدخل بحسابه ويتأكد من توثيق الإيميل.');
  }else{
-  const key=term.toLocaleLowerCase().normalize('NFKC');
-  if(key.length<2||key.length>24)throw Error('اكتب حرفين على الأقل من اسم اللاعب');
-  const recent=await fs.getDocs(fs.query(fs.collection(db,'directory'),fs.orderBy('nameLower'),fs.startAt(key),fs.endAt(key+'\uf8ff'),fs.limit(30)));
-  docs=recent.docs;
-  // Exact names created before the searchable index was deployed.
-  if(docs.length<30){const legacy=await fs.getDocs(fs.query(fs.collection(db,'directory'),fs.where('name','==',term),fs.limit(30)));
-   docs=[...new Map([...docs,...legacy.docs].map(d=>[d.id,d])).values()].slice(0,30);}
+  const value=term.toLocaleLowerCase().normalize('NFKC');
+  if(value.length<2||value.length>24)throw Error('اكتب أول حرفين على الأقل من اسم اللاعب');
+  // Existing accounts may predate the nameLower field. Query both indexes,
+  // including original-case prefixes, without requiring a mass data migration.
+  const starts=[value,term,term.charAt(0).toUpperCase()+term.slice(1),term.toUpperCase()];
+  const specs=[['nameLower',value],...new Map(starts.map(v=>[v,['name',v]])).values()];
+  const results=await Promise.allSettled(specs.map(([key,prefix])=>
+    fs.getDocs(fs.query(fs.collection(db,'directory'),fs.orderBy(key),fs.startAt(prefix),fs.endAt(prefix+'\uf8ff'),fs.limit(35)))));
+  const ok=results.filter(r=>r.status==='fulfilled');
+  if(!ok.length)throw Error('فشل البحث في Firebase؛ راجع صلاحيات قراءة قائمة اللاعبين');
+  docs=[...new Map(ok.flatMap(r=>r.value.docs).map(d=>[d.id,d])).values()].slice(0,50);
  }
- const results=docs.filter(d=>d.id!==userId).map(d=>{const v=d.data();return{uid:d.id,user:{id:v.id||'',name:v.name||'لاعب',avatar:v.avatar||'🎮',photo:rawPhoto(v.photo)}};});
- if(!results.length)throw Error('مفيش لاعبين مطابقين للبحث');
- return results;
+ const found=docs.filter(d=>d.id!==userId).map(d=>{
+  const v=d.data();let relation='none';
+  if(info.friends.some(f=>f.uid===d.id))relation='friend';
+  else if(info.requests.some(r=>r.fromUid===d.id))relation='incoming';
+  else if(info.sentRequests.some(r=>r.toUid===d.id))relation='sent';
+  return{uid:d.id,relation,user:{id:v.id||'',name:v.name||'لاعب',avatar:v.avatar||'🎮',photo:rawPhoto(v.photo)}};
+ });
+ return found;
 }
 export async function cloudSendFriendRequest(otherUid){const {fs,db}=await init();if(!otherUid||otherUid===userId)throw Error('اختار حساب صاحبك');
  const id=idForFriend(userId,otherUid),ref=fs.doc(db,'friendRequests',id);
@@ -187,6 +201,7 @@ export async function cloudSendFriendRequest(otherUid){const {fs,db}=await init(
  // from update, so an existing request cannot be overwritten by the sender.
  if(info.friends.some(x=>x.uid===otherUid))throw Error('أنتوا أصحاب بالفعل');
  if(info.requests.some(x=>x.fromUid===otherUid))throw Error('صاحبك بعت لك طلب بالفعل؛ وافق عليه من طلبات الصداقة');
+ if(info.sentRequests.some(x=>x.toUid===otherUid))throw Error('طلب الصداقة اتبعت بالفعل، استنى الرد');
  try{
   await fs.setDoc(ref,{fromUid:userId,toUid:otherUid,status:'pending',at:fs.serverTimestamp()});
  }catch(e){
