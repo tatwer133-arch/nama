@@ -74,6 +74,19 @@ test('FIRESTORE: two signed-in players, privacy, friends, chat, voice and match 
   await assertFails(setDoc(ref(alice,'inbox/bob/items/alice'),{fromUid:'alice',kind:'invite',text:'Spam?',roomCode:'ABC123',read:false,at:serverTimestamp(),pairId:''}));
   await assertSucceeds(getDoc(ref(bob,'inbox/bob/items/alice')));
  });
+ await t.test('compatibility voice calls use friend-only inbox notices when friendCalls rules are unavailable',async()=>{
+  const callId='CallSecure1234567890';
+  const invite={fromUid:'alice',kind:'notice',text:'VOICE_V1|CALL|'+callId+'|seegaroyal-voice-test',roomCode:'',read:false,at:serverTimestamp(),pairId:'alice__bob'};
+  await assertSucceeds(addDoc(collection(alice,'inbox/bob/items'),invite));
+  const messages=await assertSucceeds(getDocs(query(collection(bob,'inbox/bob/items'),orderBy('at','desc'))));
+  assert.ok(messages.docs.some(d=>String(d.data().text).startsWith('VOICE_V1|CALL|')));
+  await assertFails(addDoc(collection(stranger,'inbox/bob/items'),{...invite,fromUid:'eve',pairId:'eve__bob'}));
+  await assertSucceeds(addDoc(collection(bob,'inbox/alice/items'),{
+   fromUid:'bob',kind:'notice',text:'VOICE_V1|ACCEPT|'+callId,roomCode:'',read:false,at:serverTimestamp(),pairId:'alice__bob'
+  }));
+  const responses=await assertSucceeds(getDocs(query(collection(alice,'inbox/alice/items'),orderBy('at','desc'))));
+  assert.ok(responses.docs.some(d=>String(d.data().text).includes('|ACCEPT|')));
+ });
  await t.test('friend call signaling is allowed only for accepted friends',async()=>{
   await assertSucceeds(setDoc(ref(alice,'friendCalls/call1'),{fromUid:'alice',toUid:'bob',pairId:'alice__bob',peerId:'seegaroyal-voice-test',state:'ringing',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
   const calls=await assertSucceeds(getDocs(query(collection(bob,'friendCalls'),where('toUid','==','bob'))));
