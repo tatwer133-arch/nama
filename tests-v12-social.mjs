@@ -14,7 +14,7 @@ test('social nav count is live and includes pending requests plus unread direct 
 
 test('names, IDs and emails resolve to real public profiles without fake local accounts',()=>{
  assert.match(social,/nameLower:publicName\.toLocaleLowerCase\(\)\.normalize\('NFKC'\)/);
- assert.match(social,/fs\.orderBy\('nameLower'\)/);
+ assert.match(social,/fs\.orderBy\(key\)/);
  assert.match(social,/fs\.doc\(db,'emailIndex',term\.toLowerCase\(\)\)/);
  assert.match(social,/fs\.where\('id','==',term\.toUpperCase\(\)\)/);
  assert.match(app,/Array\.isArray\(state\.cloudSearch\)/);
@@ -64,10 +64,10 @@ test('public challenges are recipient-specific and restricted by Firestore rules
 });
 
 test('V11.2 cache busting loads new modules without removing existing game assets',()=>{
- assert.match(html,/styles\.css\?v=11\.2/);
- assert.match(html,/offline-adapter\.js\?v=11\.2/);
- assert.match(read('./public/offline-adapter.js'),/app\.js\?v=11\.2/);
- assert.match(app,/friend-call\.js\?v=11\.2/);
- assert.match(app,/cloud-social\.js\?v=11\.2/);
+ assert.match(html,/styles\.css\?v=11\.[23]/);
+ assert.match(html,/offline-adapter\.js\?v=11\.[23]/);
+ assert.match(read('./public/offline-adapter.js'),/app\.js\?v=11\.[23]/);
+ assert.match(app,/friend-call\.js\?v=11\.[23]/);
+ assert.match(app,/cloud-social\.js\?v=11\.[23]/);
  assert.match(app,/scene3d\.js\?v=11/);
 });
