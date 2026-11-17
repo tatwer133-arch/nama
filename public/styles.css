@@ -423,3 +423,18 @@ button[aria-busy="true"]{opacity:.7;cursor:wait}
   .room-quickbar{flex-wrap:wrap}
   .room-quickbar [data-action="room-voice-mute"]{font-size:11px}
 }
+
+
+/* V11.4: readable Firebase setup details without interrupting the first screen. */
+.cloud-setup-hint{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid #bd9a6155;background:#382d3228;color:#e8cfa9;border-radius:12px;padding:8px 11px;margin:0 0 13px;font-size:11px;line-height:1.6}
+.cloud-setup-hint button{flex:none;border:1px solid #b79668;border-radius:9px;background:#513b3d;color:#ffddb0;font:inherit;font-weight:800;padding:6px 9px}
+/* Romantic gifts settle beside an avatar; no face splat, aggressive shake or collision. */
+.flying-gift--gentle{filter:drop-shadow(0 5px 8px #0005) drop-shadow(0 0 8px #ffc77c65);will-change:transform,opacity}
+.gift-soft-halo{position:fixed;transform:translate(-50%,-50%);font-size:clamp(35px,9vw,59px);z-index:2;pointer-events:none;animation:gift-gentle-arrive 1.9s cubic-bezier(.2,.75,.2,1) forwards;filter:drop-shadow(0 4px 8px #0006) drop-shadow(0 0 10px #ffdba888)}
+.gift-soft-halo--heart{filter:drop-shadow(0 0 17px #ff6db788)}
+.gift-soft-halo--cake{filter:drop-shadow(0 5px 8px #0008) drop-shadow(0 0 11px #ffe6ab99)}
+.gift-soft-petal{position:fixed;z-index:3;pointer-events:none;filter:drop-shadow(0 2px 4px #0005);font-size:17px;will-change:transform,opacity}
+.gift-announcement--soft{background:linear-gradient(110deg,#6c4059e8,#443346ed)!important;color:#ffedce!important;border:1px solid #e8bd92!important;text-shadow:none!important;box-shadow:0 4px 22px #140b1770!important;animation:gift-soft-announcement 2.4s ease-out forwards!important}
+@keyframes gift-gentle-arrive{0%{opacity:0;transform:translate(-50%,5px) scale(.55)}24%{opacity:1;transform:translate(-50%,-50%) scale(1.06)}60%{opacity:1;transform:translate(-50%,-55%) scale(1)}100%{opacity:0;transform:translate(-50%,-63%) scale(.93)}}
+@keyframes gift-soft-announcement{0%{opacity:0;transform:translateY(12px)}15%{opacity:1;transform:translateY(0)}78%{opacity:1}100%{opacity:0;transform:translateY(-14px)}}
+@media(prefers-reduced-motion:reduce){.gift-soft-halo,.gift-announcement--soft{animation-duration:.28s!important}.gift-soft-petal{display:none}}
