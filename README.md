@@ -1,4 +1,4 @@
-# سيجا رويال V9 — الشات، الموافقة على الصوت، المشاهدة، والتواصل السحابي
+# سيجا رويال V10 — الشات، الموافقة على الصوت، المشاهدة، والتواصل السحابي
 
 النسخة العامة بعد النشر: https://seega-royale-eg.vercel.app/
 
@@ -40,3 +40,13 @@ node --test tests.mjs tests-v4.mjs tests-online.mjs tests-v5.mjs tests-v6.mjs te
 ```
 
 تحققنا من البروتوكول عبر محاكاة مضيف وضيف ومشاهد؛ **اختبار WebRTC/P2P الحقيقي بين أجهزة على شبكات مختلفة لم يكتمل** في بيئة الاختبار. متصفح Chromium في بيئة التنفيذ محظور من فتح عناوين localhost، لذا لا يمكن تأكيد شكل النافذة بصريًا على هاتف فعلي هنا.
+
+
+## V10: Web app linked to Firebase `seega-royal`
+- Public Firebase web app config is set in `public/firebase-config.js` (no Admin secrets).
+- Email/Password and Google Auth + Cloud Firestore **must be enabled** by the project owner, with this repo's `firestore.rules` published; otherwise auth / social synchronization will not work.
+- Whitelist `seega-royale-eg.vercel.app` under Authentication → Settings → Authorized domains.
+- Facebook additionally needs a Meta developer application connected in Firebase Authentication.
+- `players`, `directory`, `presence`, `friendRequests`, `dmThreads`, `inbox`, `emailIndex`, and `publicChat` are protected by Firestore rules.
+- Cloud sync stores name, avatar/photo, stable player ID and preferences. Wallet, purchased gems, rankings remain browser-local until a trusted authoritative server is built.
+- Firebase web API key is *public* app identification; rely on Auth and Firestore Rules for access control.

@@ -56,7 +56,7 @@ test('Real cloud profile module uses Firebase Authentication and Firestore, with
  const cloud=source('cloud-profile.js'),auth=source('firebase-auth.js'),config=source('firebase-config.js');
  assert(cloud.includes("mod.doc(db,'players',u.uid)"));assert(cloud.includes('mod.getDoc'));assert(cloud.includes('mod.setDoc'));
  assert(auth.includes('signInWithEmailAndPassword'));assert(auth.includes('createUserWithEmailAndPassword'));
- assert(config.includes('firebaseConfig = null'));
+ assert(config.includes("projectId: 'seega-royal'"));assert(!/private_key|serviceAccount|client_secret/.test(config));
  const rules=readFileSync(new URL('./firestore.rules',import.meta.url),'utf8');
  assert(rules.includes('function own(uid)'));assert(rules.includes('allow list: if false'));
 });

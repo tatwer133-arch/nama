@@ -1,7 +1,14 @@
-# تفعيل اجتماعي حقيقي في Firebase
+# سيجا رويال — تفعيل Firebase (مشروع seega-royal)
 
-راجع README. أهم شرط أن ملفات `public/firebase-config.js` ليست بيانات سرية ولا تحتوي على Admin Key. ضع Public Web App Config فقط، ولا تكتب سر Meta أو مفتاح حساب خدمة في المستودع.
+تم إدراج بيانات إعداد تطبيق الويب العامة في `public/firebase-config.js`. **التطبيق لا يقدر يفعّل الخدمات بنفسه من بيانات الإعداد العامة.** اتبع الخطوات التالية بصفتك مالك مشروع Firebase:
 
-المنتج يحتاج صلاحيات Firebase Authentication للبريد وجوجل وفيسبوك (الأخير يحتاج Meta App)، وCloud Firestore بقواعد `firestore.rules`. قواعد الأصدقاء تتطلب بريدًا مُؤكدًا للبحث بالبريد الإلكتروني؛ يمكن الإضافة بالـID بدون ذلك. لا تفعّل القراءة العامة للقواعد.
+1. افتح https://console.firebase.google.com/project/seega-royal/authentication/providers ثم **Get started** إن ظهر، وفعّل **Email/Password** ثم **Google** (اضغط Save لكل مزود).
+2. في **Authentication → Settings → Authorized domains** أضف `seega-royale-eg.vercel.app`، بدون https أو شرطة مائلة.
+3. افتح https://console.firebase.google.com/project/seega-royal/firestore. اضغط **Create database** واختر Standard + `(default)`، ثم وضع الإنتاج **Production mode** وليس وضع اختبار واسع النطاق، وحدد موقع البيانات المتاح على الخطة المجانية.
+4. بعد إنشاء قاعدة البيانات افتح تبويب **Rules**، واحذف القواعد الافتراضية واستبدلها بالنص الكامل في ملف `firestore.rules`، ثم اضغط **Publish**. لا تستخدم `allow read, write: if true`.
+5. اختبر إنشاء حسابين بإيميلين مختلفين من متصفحين، ثم سجل دخولك للحساب الأول من الجهاز الثاني؛ يجب أن تظهر **نفس الصورة، الاسم، والـID**. جرّب إضافة صديق بالـID والشات العام والخاص بعد قبول الطلب.
+6. **Facebook** لا يعمل بمجرد إضافة Firebase Config: أنشئ تطبيقًا في Meta for Developers وأضف App ID + App Secret في Firebase Authentication → Sign-in method → Facebook، وإعداد OAuth redirect داخل Meta. لا ترسل الأسرار هنا.
 
-لا تستخدم التطبيق لإدارة أرصدة مالية قبل إضافة backend موثوق. لا تتعامل مع Firebase web config على أنه سر يضمن الخصوصية، فالأمان من Authentication وSecurity Rules والمراقبة.
+**مهم:** الكوينز والجواهر ونتائج المباريات ما زالت محفوظة محليًا، ولن تتم مزامنتها بين الأجهزة إلى أن يتوفر خادم آمن يتحقق من الأرصدة والحركات. نظام الغرف الصوتية والمشاهدة P2P تجريبي، ولا يضمن العمل عبر جميع الشبكات.
+
+التحقق من إرسال رسائل وإضافة أصدقاء يحتاج تجربة بعد نشر قواعد Firestore؛ الاختبارات المحلية لا تثبت نجاح الخدمات السحابية الفعلية.

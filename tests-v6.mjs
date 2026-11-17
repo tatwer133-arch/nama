@@ -39,7 +39,7 @@ test('reuses WebGL context between game turns for mobile stability',()=>{
  assert(!scene.includes("WEBGL_lose_context"));
 });
 test('cache-busted v6 assets are used in production',()=>{
- assert.match(html,/styles\.css\?v=[89]/);
- assert.match(html,/offline-adapter\.js\?v=[89]/);
- assert.match(get('./public/offline-adapter.js'),/await import\('\.\/app\.js\?v=9'\)/);
+ assert.match(html,/styles\.css\?v=(?:[89]|10)/);
+ assert.match(html,/offline-adapter\.js\?v=(?:[89]|10)/);
+ assert.match(get('./public/offline-adapter.js'),/await import\('\.\/app\.js\?v=10'\)/);
 });

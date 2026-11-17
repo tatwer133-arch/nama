@@ -312,7 +312,7 @@ function onlineEvent(event,data,cb){
  return cb({error:'الميزة دي مش متاحة في الغرفة'});
 }
 async function message(path,method,body={}){
- if(path==='/config')return {items,providers:{google:false,facebook:false,emailDevice:true},iceServers:[{urls:'stun:stun.l.google.com:19302'}],colors,gifts,mode:'peer-to-peer'};
+ if(path==='/config')return {items,providers:{google:true,facebook:true,emailDevice:false,emailCloud:true},iceServers:[{urls:'stun:stun.l.google.com:19302'}],colors,gifts,mode:'peer-to-peer'};
  if(path==='/me'&&method==='GET')return {user:signedOut?null:me?pub():null};
  if(path==='/auth/guest'&&method==='POST'){
   if(!me||me.email||me.provider){me=newProfile(body.name||'لاعب سيجا');}
@@ -463,4 +463,4 @@ window.io=()=>{
   return cb({error:'الميزة دي غير متاحة في نسخة اللعب المحلي'});
  }};return sock;
 };
-await import('./app.js?v=9');
+await import('./app.js?v=10');

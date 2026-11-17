@@ -49,5 +49,5 @@ test('Google/Facebook are genuine Firebase OAuth integration when configured, no
  const auth=readFileSync(new URL('./public/firebase-auth.js',import.meta.url),'utf8');
  const cfg=readFileSync(new URL('./public/firebase-config.js',import.meta.url),'utf8');
  assert(auth.includes('signInWithPopup'));assert(auth.includes('GoogleAuthProvider'));assert(auth.includes('FacebookAuthProvider'));
- assert(cfg.includes('firebaseConfig = null'));
+ assert(cfg.includes("projectId: 'seega-royal'"));assert(!/private_key|serviceAccount|client_secret/.test(cfg));
 });

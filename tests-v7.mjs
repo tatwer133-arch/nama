@@ -101,6 +101,6 @@ test('source applies low-overhead shader, LOD, GPU caching and cache v7',()=>{
  assert.match(scene,/const pieceTemplates=new Map\(\)/);
  assert.match(scene,/paint\(r,r\.base\);paint\(r,r\.pieces\);/);
  assert(!scene.includes('sin(vUv.y*205.0'));
- assert(html.includes('styles.css?v=9'));
+ assert(html.includes('styles.css?v=10')); 
  assert(app.includes('if(!state.room)reset3D()'));
 });

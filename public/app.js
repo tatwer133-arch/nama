@@ -1,6 +1,6 @@
 import {variantActions,chineseLayout,GAME_CATALOG} from './variants.js';
 import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js';
-import {mount3D,reset3D} from './scene3d.js?v=9';
+import {mount3D,reset3D} from './scene3d.js?v=10';
 import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js';
 import {cloudReadOrCreate,cloudUpdate} from './cloud-profile.js';
 import {cloudSocialAvailable,cloudSocialStart,cloudSocialStop,cloudPresence,cloudPublicProfile,cloudSearchPlayer,cloudSendFriendRequest,cloudRespondFriend,cloudSendInbox,cloudMarkInbox,cloudSendDirect,cloudWatchDirect,cloudPostPublic} from './cloud-social.js';
@@ -491,7 +491,7 @@ async function authReady(u){
    if(current?.uid&&u?.firebaseUid===current.uid){
     const remote=await cloudReadOrCreate(u),saved=await post('/me/cloud-sync',{profile:remote});u=saved.user;
    }
-  }catch(e){toast('الحساب دخل محليًا، لكن مزامنة البيانات ما اكتملتش: '+e.message);}
+  }catch(e){if(u?.firebaseUid)throw Error('دخلت بالحساب لكن مزامنة البيانات السحابية غير متاحة: '+e.message+' — فعّل Firestore وانشر قواعد الحماية.');toast('المزامنة السحابية لم تكتمل: '+e.message);}
  }
  setMe(u);$('#auth-cover').classList.add('hidden');startSocket();state.config=await api('/config');state.store=state.config.items;if(state.me?.settings?.music)startMusic();else stopMusic();if(firebaseReady()&&state.me?.firebaseUid){
   cloudSocialStart(state.me,()=>state.room,data=>{state.cloud=data;if(state.tab==='social'&&!state.room)render();},n=>{
@@ -511,7 +511,7 @@ $('#guest-login').addEventListener('click',async()=>{unlockAudio();try{if(fireba
 $('#google-login').addEventListener('click',async()=>{unlockAudio();try{const profile=await firebaseSignIn('google');const r=await post('/auth/federated',profile);await authReady(r.user);}catch(e){toast(e.message);}});
 $('#facebook-login').addEventListener('click',async()=>{unlockAudio();try{const profile=await firebaseSignIn('facebook');const r=await post('/auth/federated',profile);await authReady(r.user);}catch(e){toast(e.message);}});
 document.addEventListener('pointerdown',()=>{unlockGiftAudio();unlockAudio();if(state.me?.settings?.music)startMusic();},{capture:true,passive:true});
-(async function boot(){try{if(firebaseReady()){const note=$('.auth-local-notice');if(note)note.textContent='🔒 حسابك متصل بـ Firebase: ملفك الشخصي والـ ID والصورة والإعدادات بتتزامن بين الأجهزة. الكوينز والترتيب لسه محتاجين سيرفر موثوق.';}state.config=await api('/config');state.store=state.config.items;const r=await api('/me');if(r.user){
+(async function boot(){try{if(firebaseReady()){const note=$('.auth-local-notice');if(note)note.textContent='☁️ إعداد Firebase متوصل بالكود. بعد تفعيل طرق الدخول وإنشاء Firestore ونشر قواعد الأمان، هتتزامن الصورة والـ ID والاسم بين الأجهزة. رصيد الكوينز والترتيب لا يزال محليًا.';}state.config=await api('/config');state.store=state.config.items;const r=await api('/me');if(r.user){
   if(firebaseReady()){
    const cloud=await firebaseCurrent();
    if(cloud?.uid&&cloud.uid!==r.user.firebaseUid){
@@ -522,4 +522,4 @@ document.addEventListener('pointerdown',()=>{unlockGiftAudio();unlockAudio();if(
  else if(firebaseReady()){ 
   try{const cloud=await firebaseCurrent();if(cloud){const res=await post('/auth/federated',cloud);await authReady(res.user);}else $('#auth-cover').classList.remove('hidden');}
   catch(e){$('#auth-cover').classList.remove('hidden');toast('تعذّر فتح الحساب السحابي: '+e.message);}
- }else $('#auth-cover').classList.remove('hidden');if(location.search.includes('autherror'))toast('فشل الدخول الاجتماعي؛ راجع الإعدادات');}catch(e){toast('مش قادر أتصل بالسيرفر — '+e.message);}})();
+ }else $('#auth-cover').classList.remove('hidden');if(location.search.includes('autherror'))toast('فشل الدخول الاجتماعي؛ راجع الإعدادات');}catch(e){toast('تعذّر تشغيل الحساب: '+e.message+' — يمكنك تجربة وضع الضيف لحين تفعيل Firebase.');$('#auth-cover').classList.remove('hidden');}})();
