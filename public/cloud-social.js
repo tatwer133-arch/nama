@@ -79,10 +79,21 @@ export async function cloudPresence(){if(!ctx||!userId)return false;
 export async function cloudPublicProfile(local){const {auth,fs,db}=await init();const uid=auth.currentUser.uid;
  publicName=cleanName(local.name);publicAvatar=sanitize(local.avatar).slice(0,8)||'🎮';publicPhoto=rawPhoto(local.photo);
  const publicData={uid,id:validID(local.id)?local.id:'',name:publicName,nameLower:publicName.toLocaleLowerCase().normalize('NFKC'),avatar:publicAvatar,photo:publicPhoto,updatedAt:fs.serverTimestamp()};
- await fs.setDoc(fs.doc(db,'directory',uid),publicData,{merge:true});
+ try{await fs.setDoc(fs.doc(db,'directory',uid),publicData,{merge:true});}
+ catch(e){
+  if(e?.code!=='permission-denied')throw e;
+  // Existing deployed rules may not accept nameLower yet. Preserve friends/chat
+  // until the project owner publishes the new rules, rather than locking users out.
+  const {nameLower,...legacy}=publicData;
+  await fs.setDoc(fs.doc(db,'directory',uid),legacy,{merge:true});
+  onNotice({kind:'error',text:'بحث الأسماء الجديد ومكالمات الأصدقاء يحتاجوا نشر قواعد Firestore المحدثة.'});
+ }
  // Email lookup is bound by Firestore rules to the email in this user's Firebase Auth token.
  const email=auth.currentUser.email?.trim().toLowerCase();
- if(email&&email.length<160)await fs.setDoc(fs.doc(db,'emailIndex',email),{uid,id:publicData.id,name:publicData.name},{merge:true});
+ if(email&&email.length<160)await fs.setDoc(fs.doc(db,'emailIndex',email),{uid,id:publicData.id,name:publicData.name},{merge:true}).catch(e=>{
+  if(e?.code==='permission-denied')onNotice({kind:'error',text:'ظهور الحساب في بحث الإيميل يحتاج نشر قواعد Firestore الجديدة أو تأكيد البريد الإلكتروني.'});
+  else throw e;
+ });
 }
 export async function cloudSocialStart(profile,roomGetter,update,notify){
  if(!firebaseReady())return false;
