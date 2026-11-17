@@ -134,6 +134,50 @@ function animateGiftToAvatar(gift){
  const layer=document.createElement('div');layer.className='gift-fx-layer';layer.setAttribute('aria-hidden','true');
  const projectile=document.createElement('span');projectile.className='flying-gift flying-gift--'+gift.id;projectile.textContent=gift.emoji;
  projectile.style.left=sx+'px';projectile.style.top=sy+'px';layer.append(projectile);document.body.append(layer);
+ // Romantic gifts are presented beside the player, not thrown at their face.
+ // Keep impact animations only for deliberately comic gifts such as egg/hammer.
+ if(['rose','heart','cake'].includes(gift.id)){
+  const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+  const landingX=b.left+b.width*.87;
+  const landingY=b.bottom+(gift.id==='cake'?24:10);
+  const gx=landingX-sx,gy=landingY-sy;
+  const duration=reduced?280:gift.id==='rose'?1950:1700;
+  const move=(x,y,scale,angle)=>'translate(calc(-50% + '+x+'px),calc(-50% + '+y+'px)) scale('+scale+') rotate('+angle+'deg)';
+  projectile.classList.add('flying-gift--gentle');
+  projectile.animate([
+   {transform:move(0,0,.45,-7),opacity:0,offset:0},
+   {transform:move(gx*.28,gy*.2-56,.82,5),opacity:1,offset:.28},
+   {transform:move(gx*.68,gy*.65-77,1.10,-4),opacity:1,offset:.65},
+   {transform:move(gx,gy,1.06,0),opacity:1,offset:.86},
+   {transform:move(gx,gy-7,1.03,0),opacity:0,offset:1}
+  ],{duration,fill:'forwards',easing:'cubic-bezier(.22,.66,.28,1)'});
+  const announce=gift.id==='rose'?' قدّم وردة رقيقة إلى ':gift.id==='cake'?' احتفل بكيكة مع ':' بعت قلب إلى ';
+  const from=state.room?.players?.[gift.from]?.name||'لاعب سيجا';
+  const to=state.room?.players?.[gift.to]?.name||'صاحبه';
+  setTimeout(()=>{
+   playGiftSound(gift.id);
+   const halo=document.createElement('span');halo.className='gift-soft-halo gift-soft-halo--'+gift.id;
+   halo.textContent=gift.id==='cake'?'🍰':gift.id==='rose'?'🌹':'💖';
+   halo.style.left=landingX+'px';halo.style.top=landingY+'px';layer.append(halo);
+   const note=document.createElement('span');note.className='gift-announcement gift-announcement--soft';
+   note.textContent=from+announce+to;
+   layer.append(note);
+   if(!reduced){
+    const petals=gift.id==='cake'?['✨','🎊','✨','⭐']:gift.id==='rose'?['🌸','🌷','✨','🌸']:['💗','✨','💖','✨'];
+    petals.forEach((emoji,i)=>{
+     const p=document.createElement('span');p.className='gift-soft-petal';p.textContent=emoji;
+     p.style.left=landingX+'px';p.style.top=landingY+'px';layer.append(p);
+     const theta=(Math.PI*2*i/petals.length)-.7,dist=30+i*9;
+     p.animate([{opacity:0,transform:'translate(-50%,-50%) scale(.5)'},
+      {opacity:1,transform:'translate(calc(-50% + '+Math.cos(theta)*dist*.65+'px),calc(-50% + '+Math.sin(theta)*dist*.65+'px)) scale(.95)',offset:.5},
+      {opacity:0,transform:'translate(calc(-50% + '+Math.cos(theta)*dist+'px),calc(-50% + '+(Math.sin(theta)*dist-26)+'px)) scale(.6)'}],
+      {duration:1600,easing:'ease-out',fill:'forwards'});
+    });
+   }
+  },duration*.76);
+  setTimeout(()=>layer.remove(),duration+2300);
+  return;
+ }
  const duration=1080;
  projectile.animate([
   {transform:'translate(-50%,-50%) scale(.45) rotate(-25deg)',opacity:.25,offset:0},
