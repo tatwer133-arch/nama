@@ -93,7 +93,16 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
  const q1=fs.query(fs.collection(db,'friendRequests'),fs.where('fromUid','==',userId));
  const q2=fs.query(fs.collection(db,'friendRequests'),fs.where('toUid','==',userId));
  subscribe(q1,()=>refreshFriends().catch(e=>onNotice({kind:'error',text:e.message})));
- subscribe(q2,()=>refreshFriends().catch(e=>onNotice({kind:'error',text:e.message})));
+ const requestStart=Date.now(),seenRequests=new Set();
+ subscribe(q2,snap=>{
+  refreshFriends().catch(e=>onNotice({kind:'error',text:e.message}));
+  for(const change of snap.docChanges()){
+   const data=change.doc.data(),id=change.doc.id;
+   if(change.type==='added'&&data.status==='pending'&&tm(data.at)>=requestStart-8000&&!seenRequests.has(id)){
+    seenRequests.add(id);onNotice({kind:'friend',text:'📨 وصلك طلب صداقة جديد'});
+   }
+  }
+ });
  let chatVersion=0;
  subscribe(fs.query(fs.collection(db,'publicChat'),fs.orderBy('at','desc'),fs.limit(60)),snap=>{
   const version=++chatVersion;
@@ -107,7 +116,7 @@ export async function cloudSocialStart(profile,roomGetter,update,notify){
   for(const change of snap.docChanges()){
    const data=change.doc.data(),at=tm(data.at),id=change.doc.id;
    if(change.type==='added'&&!data.read&&at>=startup-8000&&!seen.has(id)){
-    seen.add(id);onNotice({kind:data.kind||'invite',text:data.text||'وصلك إشعار جديد',roomCode:cleanRoom(data.roomCode),id});
+    seen.add(id);onNotice({kind:data.kind||'invite',text:data.text||'وصلك إشعار جديد',roomCode:cleanRoom(data.roomCode),id,fromUid:data.fromUid});
    }
   }
  });
@@ -167,6 +176,11 @@ export async function cloudSendInbox(uid,kind,text,roomCode=''){
  await fs.addDoc(fs.collection(db,'inbox',uid,'items'),{fromUid:userId,kind,text:sanitize(text).slice(0,160),roomCode:cleanRoom(roomCode),read:false,at:fs.serverTimestamp(),pairId});
 }
 export async function cloudMarkInbox(id){const {fs,db}=await init();await fs.updateDoc(fs.doc(db,'inbox',userId,'items',id),{read:true});}
+export function cloudCloseDirect(){
+ if(!ctx)return;
+ for(let i=stopFns.length-1;i>=0;i--)if(stopFns[i].__dm){const old=stopFns.splice(i,1)[0];try{old();}catch{}}
+ info.dmOther=null;info.dm=[];push();
+}
 export async function cloudMarkDirectRead(uid){
  const {fs,db}=await init();
  const unread=info.inbox.filter(x=>x.kind==='dm'&&!x.read&&x.fromUid===uid).slice(0,40);
@@ -177,7 +191,7 @@ export async function cloudSendDirect(otherUid,text){const {fs,db}=await init();
  if(!friend.exists()||friend.data().status!=='accepted')throw Error('مش موجود في قائمة أصدقائك');
  await fs.addDoc(fs.collection(db,'dmThreads',pairId,'messages'),{uid:userId,text:clean,at:fs.serverTimestamp()});
  // The message is committed already; failure to notify must not report a failed send.
- await cloudSendInbox(otherUid,'dm','💬 وصلت لك رسالة جديدة').catch(e=>onNotice({kind:'error',text:'الرسالة وصلت لكن الإشعار لم يُرسل: '+e.message}));
+ await cloudSendInbox(otherUid,'dm','💬 '+publicName+' بعت لك رسالة جديدة').catch(e=>onNotice({kind:'error',text:'الرسالة وصلت لكن الإشعار لم يُرسل: '+e.message}));
 }
 export function cloudWatchDirect(otherUid){if(!ctx||!userId)return;
  const {fs,db}=ctx;
