@@ -1,6 +1,6 @@
 // Opt-in friend-to-friend voice calls. Firestore signals consent; PeerJS carries audio.
 // This does not create background calls or request microphone permission automatically.
-import {firebaseSdk} from './firebase-auth.js?v=11.3';
+import {firebaseSdk} from './firebase-auth.js?v=11.4';
 let context=null,stopIncoming=null,stopInbox=null,session=null;
 let incomingHandler=()=>{},changeHandler=()=>{},noticeHandler=()=>{};
 const seen=new Set(),pending=new Map();
