@@ -11,20 +11,13 @@
 - الشات الصوتي والغرف بين جهازين **P2P تجريبي** ويعتمدان على شبكة PeerJS العامة بدون TURN مضمون. صاحب الغرفة لازم يترك الصفحة مفتوحة.
 - باقي الألعاب والجرافيك ثلاثي الأبعاد ونظام العملات التجريبية من V8 ما زالوا موجودين.
 
-## محضّر برمجيًا لكنه لا يعمل دون Firebase
+## الحسابات السحابية: إعداد الويب تم، تفعيل الخدمات من لوحة Firebase مطلوب
 
-توجد ملفات `public/cloud-social.js` و `public/cloud-profile.js` و `firestore.rules` لإدارة حسابات Firebase الحقيقية، والمزامنة بين الأجهزة، والبحث عن أصدقاء بالـID أو بريد مُتحقق منه، والقبول والرفض، ورسائل الأصدقاء، ودعوة غرفة، وشات عام، وحالات Online/Playing/Watching. 
+بيانات **تطبيق الويب العامة** لمشروع Firebase `seega-royal` مضافة الآن إلى `public/firebase-config.js`، وكود Firebase Authentication وFirestore موجود.
 
-**الحساب المتصل والمزامنة لا يعملان على الموقع ما دام `public/firebase-config.js` = null.** لا يكفي نشر Vercel. يجب على مالك المشروع ربط Firebase Authentication وFirestore بقواعد آمنة. لا نُنشئ بيانات وهمية أو نُظهر أصدقاء محليين على أنهم أونلاين.
+قبل اعتبار الحسابات والأصدقاء والشات العام جاهزين فعلًا، مالك مشروع Firebase لازم يعمل **Enable** لطرق الدخول Email/Password وGoogle، وينشئ قاعدة Cloud Firestore وينشر قواعد `firestore.rules`، ويضيف دومين Vercel إلى **Authorized domains**. الإجراءات بالتفصيل في `FIREBASE_SETUP.md`.
 
-### إعداد Firebase
-
-1. أنشئ مشروعًا مجانيًا في [Firebase Console](https://console.firebase.google.com/) وفعل Firestore وFirebase Authentication.
-2. فعّل Email/Password وGoogle؛ لتفعيل Facebook يجب إعداد تطبيق Meta ومفاتيحه **داخل لوحة Firebase فقط**.
-3. أضف `seega-royale-eg.vercel.app` إلى Authorized domains داخل Authentication.
-4. انسخ بيانات **Web app config العامة** (ليست secrets) في `public/firebase-config.js`.
-5. انشر قواعد `firestore.rules` قبل تشغيل التواصل السحابي، ثم انشر ملفات الموقع.
-6. جرّب التسجيل على موبايلين، وتوثيق البريد للعثور عليه بالإيميل، وإضافة الأصدقاء والمشاهدة، مع حسابين مختلفين.
+البيانات التي يمكن مزامنتها عند نجاح الاتصال: اسم اللاعب والـID وصورته وإعداداته، والبحث عن أصدقاء والإشعارات والشات العام والخاص. **الكود منشور لكن الخدمة لا تُعد مفعلة أو مختبرة بين جهازين حتى يتم تفعيل الخدمات ونشر القواعد وتجربة حسابين حقيقيين.** فيسبوك يتطلب إعدادًا منفصلًا لتطبيق Meta.
 
 ### حدود ما زال يحتاج إلى خلفية إنتاجية
 
@@ -36,17 +29,7 @@
 ## اختبارات
 
 ```bash
-node --test tests.mjs tests-v4.mjs tests-online.mjs tests-v5.mjs tests-v6.mjs tests-v7.mjs tests-v8.mjs tests-v9.mjs
+node --test tests.mjs tests-v4.mjs tests-online.mjs tests-v5.mjs tests-v6.mjs tests-v7.mjs tests-v8.mjs tests-v9.mjs tests-v10.mjs
 ```
 
 تحققنا من البروتوكول عبر محاكاة مضيف وضيف ومشاهد؛ **اختبار WebRTC/P2P الحقيقي بين أجهزة على شبكات مختلفة لم يكتمل** في بيئة الاختبار. متصفح Chromium في بيئة التنفيذ محظور من فتح عناوين localhost، لذا لا يمكن تأكيد شكل النافذة بصريًا على هاتف فعلي هنا.
-
-
-## V10: Web app linked to Firebase `seega-royal`
-- Public Firebase web app config is set in `public/firebase-config.js` (no Admin secrets).
-- Email/Password and Google Auth + Cloud Firestore **must be enabled** by the project owner, with this repo's `firestore.rules` published; otherwise auth / social synchronization will not work.
-- Whitelist `seega-royale-eg.vercel.app` under Authentication → Settings → Authorized domains.
-- Facebook additionally needs a Meta developer application connected in Firebase Authentication.
-- `players`, `directory`, `presence`, `friendRequests`, `dmThreads`, `inbox`, `emailIndex`, and `publicChat` are protected by Firestore rules.
-- Cloud sync stores name, avatar/photo, stable player ID and preferences. Wallet, purchased gems, rankings remain browser-local until a trusted authoritative server is built.
-- Firebase web API key is *public* app identification; rely on Auth and Firestore Rules for access control.
