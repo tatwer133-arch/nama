@@ -64,10 +64,10 @@ test('public challenges are recipient-specific and restricted by Firestore rules
 });
 
 test('V11.2 cache busting loads new modules without removing existing game assets',()=>{
- assert.match(html,/styles\.css\?v=11\.[23]/);
- assert.match(html,/offline-adapter\.js\?v=11\.[23]/);
- assert.match(read('./public/offline-adapter.js'),/app\.js\?v=11\.[23]/);
- assert.match(app,/friend-call\.js\?v=11\.[23]/);
- assert.match(app,/cloud-social\.js\?v=11\.[23]/);
+ assert.match(html,/styles\.css\?v=11\.[234]/);
+ assert.match(html,/offline-adapter\.js\?v=11\.[234]/);
+ assert.match(read('./public/offline-adapter.js'),/app\.js\?v=11\.[234]/);
+ assert.match(app,/friend-call\.js\?v=11\.[234]/);
+ assert.match(app,/cloud-social\.js\?v=11\.[234]/);
  assert.match(app,/scene3d\.js\?v=11/);
 });
