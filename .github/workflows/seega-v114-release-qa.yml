@@ -1,4 +1,4 @@
-name: Seega Royale V11.4 release QA
+name: Seega Royale V11.4 release QA - final
 on:
   push:
     branches:
