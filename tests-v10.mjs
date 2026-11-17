@@ -19,7 +19,7 @@ test('V11 loads fresh assets and Firebase web Auth',()=>{
  const html=src('./public/index.html'),adapter=src('./public/offline-adapter.js'),app=src('./public/app.js');
  assert.match(html,/styles\.css\?v=11/);
  assert.match(html,/offline-adapter\.js\?v=11/);
- assert.match(adapter,/await import\('\.\/app\.js\?v=11(?:\.[12])?'\)/);
+ assert.match(adapter,/await import\('\.\/app\.js\?v=11(?:\.[123])?'\)/);
  assert.match(app,/scene3d\.js\?v=11/);
  assert.match(app,/firebaseEmail\(/);
  assert.match(app,/cloudReadOrCreate\(/);
