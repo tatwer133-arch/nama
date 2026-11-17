@@ -20,4 +20,4 @@ jobs:
       - name: Run gameplay and cloud contract tests
         run: |
           node --version
-          node --experimental-default-type=module --test tests*.mjs
+          node --test tests*.mjs
