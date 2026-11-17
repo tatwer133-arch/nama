@@ -6,7 +6,7 @@ function adapter(){
  const mem=new Map(),storage={getItem:k=>mem.get(k)||null,setItem:(k,v)=>mem.set(k,String(v)),removeItem:k=>mem.delete(k)};
  const window={Peer:class{},fetch:async()=>({})};
  const code=readFileSync(new URL('./public/offline-adapter.js',import.meta.url),'utf8')
- .replace(/^import .*?;\n/gm,'').replace(/await import\('\.\/app\.js\?v=\d+'\);/,'');
+ .replace(/^import .*?;\n/gm,'').replace(/await import\('\.\/app\.js\?v=\d+(?:\.\d+)?'\);/,'');
  const maker=new Function('initialGame','applyAction','aiAction','initialVariant','variantApply','variantAI','window','localStorage','sessionStorage','crypto','structuredClone','Response','setTimeout','clearTimeout','TextEncoder',code+'\nreturn {message,getRoom:roomSafe,window,storage:localStorage};');
  return maker(initialGame,applyAction,aiAction,initialVariant,variantApply,variantAI,window,storage,storage,crypto.webcrypto,structuredClone,Response,setTimeout,clearTimeout,TextEncoder);
 }
