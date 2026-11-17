@@ -33,10 +33,10 @@ service cloud.firestore {
     match /directory/{uid} {
       function valid() {
         let d = request.resource.data;
-        return d.keys().hasOnly(['uid','id','name','avatar','photo','updatedAt'])
-          && d.keys().hasAll(['uid','id','name','avatar','photo','updatedAt'])
+        return d.keys().hasOnly(['uid','id','name','nameLower','avatar','photo','updatedAt'])
+          && d.keys().hasAll(['uid','id','name','nameLower','avatar','photo','updatedAt'])
           && d.uid == uid && d.id is string && d.id.matches('^SG-[A-F0-9]{10}$')
-          && stringsUnder(d,'name',24) && stringsUnder(d,'avatar',32)
+          && stringsUnder(d,'name',24) && stringsUnder(d,'nameLower',24) && stringsUnder(d,'avatar',32)
           && (d.photo == null || stringsUnder(d,'photo',170000))
           && d.updatedAt == request.time;
       }
@@ -48,7 +48,7 @@ service cloud.firestore {
     match /emailIndex/{email} {
       function valid() {
         let d=request.resource.data;
-        return signed() && request.auth.token.email_verified == true
+        return signed() && request.auth.token.email is string
           && request.auth.token.email.lower() == email
           && d.keys().hasOnly(['uid','id','name']) && d.keys().hasAll(['uid','id','name'])
           && d.uid == request.auth.uid && stringsUnder(d,'id',13) && stringsUnder(d,'name',24);
@@ -126,6 +126,49 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).changedKeys().hasOnly(['read'])
         && request.resource.data.read == true;
       allow delete: if own(recipient);
+    }
+    match /friendCalls/{callId} {
+      function pairPath(pairId) {
+        return /databases/$(database)/documents/friendRequests/$(pairId);
+      }
+      function counterpart(d) {
+        return exists(pairPath(d.pairId))
+          && get(pairPath(d.pairId)).data.status == 'accepted'
+          && (
+            (get(pairPath(d.pairId)).data.fromUid == d.fromUid &&
+             get(pairPath(d.pairId)).data.toUid == d.toUid) ||
+            (get(pairPath(d.pairId)).data.toUid == d.fromUid &&
+             get(pairPath(d.pairId)).data.fromUid == d.toUid)
+          );
+      }
+      allow get,list: if signed() &&
+        (resource.data.fromUid == request.auth.uid ||
+         resource.data.toUid == request.auth.uid);
+      allow create: if signed() &&
+        request.resource.data.keys().hasOnly(['fromUid','toUid','pairId','peerId','state','createdAt','updatedAt']) &&
+        request.resource.data.keys().hasAll(['fromUid','toUid','pairId','peerId','state','createdAt','updatedAt']) &&
+        request.resource.data.fromUid == request.auth.uid &&
+        request.resource.data.toUid is string &&
+        request.resource.data.toUid != request.auth.uid &&
+        stringsUnder(request.resource.data,'pairId',270) &&
+        stringsUnder(request.resource.data,'peerId',128) &&
+        request.resource.data.state == 'ringing' &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.updatedAt == request.time &&
+        counterpart(request.resource.data);
+      allow update: if signed() &&
+        (resource.data.fromUid == request.auth.uid ||
+         resource.data.toUid == request.auth.uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['state','updatedAt']) &&
+        request.resource.data.updatedAt == request.time &&
+        (
+          (resource.data.state == 'ringing' &&
+            resource.data.toUid == request.auth.uid &&
+            request.resource.data.state in ['accepted','declined']) ||
+          (resource.data.state in ['ringing','accepted'] &&
+            request.resource.data.state == 'ended')
+        );
+      allow delete: if false;
     }
     match /{document=**} {allow read,write: if false;}
   }
