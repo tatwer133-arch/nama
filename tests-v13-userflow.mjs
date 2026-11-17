@@ -72,7 +72,7 @@ test('match voice uses consent, opens microphones and has local mute without han
 });
 
 test('red nav badge counts friend requests, private messages and pending matches',()=>{
- assert.match(app,/state\.cloud\?\.unread\|\|0/);
+ assert.match(app,/state\.cloud\.unread\|\|0/);
  assert.match(app,/state\.matchInvites\|\|\[\]/);
  assert.match(app,/social-alert-badge/);
  assert.match(social,/info\.unread=info\.requests\.length/);
