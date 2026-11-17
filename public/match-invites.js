@@ -1,5 +1,5 @@
 // Explicit invitation state machine. Recipient must accept before joining.
-import {firebaseSdk} from './firebase-auth.js?v=11.3';
+import {firebaseSdk} from './firebase-auth.js?v=11.4';
 const LIFETIME_MS=5*60*1000;
 let client=null,unsubs=[],me=null,onIncoming=()=>{},onUpdate=()=>{},onStatus=()=>{},invitations=[],outgoing=[],seen=new Map();
 const timestamp=x=>x?.toMillis?.()||0;
