@@ -1,5 +1,20 @@
 {
   "firestore": {
     "rules": "firestore.rules"
-  }
+  },
+  "functions": [
+    {
+      "source": ".",
+      "codebase": "seega-game",
+      "ignore": [
+        ".git",
+        ".github",
+        "node_modules",
+        "qa-artifacts",
+        "*.log",
+        ".env",
+        ".env.*"
+      ]
+    }
+  ]
 }
