@@ -5,7 +5,7 @@
  * Wallet amounts use integer hundredths of non-redeemable game coins.
  */
 import {transition,payout,requireBackend} from './match-protocol.mjs';
-const CLIENT_ACTIONS=new Set(['quick-join','invite','accept','kick','ready','leave','move','disconnect','reconnect']);
+const CLIENT_ACTIONS=new Set(['quick-join','invite','accept','decline','kick','ready','leave','move','disconnect','reconnect']);
 const SYSTEM_ACTIONS=new Set(['disconnect','reconnect','auto-move','disconnect-timeout']);
 const assert=(x,message)=>{if(!x)throw new Error(message)};
 const ledgerId=(type,id)=>type+':'+id;
