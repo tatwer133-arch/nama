@@ -1,6 +1,7 @@
 import {variantActions,chineseLayout,GAME_CATALOG,initialVariant} from './variants.js';
 import {initialGame} from './game-engine.js';
-import {liveUid,liveOpenQuick,liveOpenPrivate,liveWallet,liveCommand,liveChat,liveWatchMatch,liveWatchInvitations,liveProfile} from './live-match.js?v=1';
+import {liveUid,liveOpenQuick,liveOpenPrivate,liveWallet,liveCommand,liveChat,liveWatchMatch,liveWatchInvitations,liveProfile,liveSignal} from './live-match.js?v=1';
+import {createLiveVoice} from './live-voice.js?v=1';
 import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js';
 import {mount3D,reset3D} from './scene3d.js?v=11.4';
 import {firebaseReady,firebaseSignIn,firebaseEmail,firebaseCurrent,firebaseLogout} from './firebase-auth.js?v=11.4';
@@ -11,8 +12,8 @@ import {friendCallsStart,friendCallsStop,friendCallDial,friendCallAnswer,friendC
 const $=sel=>document.querySelector(sel);
 const fmt=n=>new Intl.NumberFormat('ar-EG',{maximumFractionDigits:0}).format(n??0);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={me:null,tab:'home',room:null,rooms:[],store:[],config:null,friends:[],ranking:[],search:[],world:[],socket:null,selected:null,authView:'login',socialMode:'friends',dmId:null,dmMessages:[],voice:false,localStream:null,peer:null,iceQueue:[],busy:false,boardSize:[3,5,7,9].includes(Number(localStorage.getItem('seega_board_size')))?Number(localStorage.getItem('seega_board_size')):5,gameMode:localStorage.getItem('seega_game_mode')||'seega5',boardTilt:true,chatOpen:false,rankFilter:'coins',captureFx:null,giftFx:null,giftMenuOpen:false,lastFxSeq:null,unreadRoom:0,voicePending:false,voiceConsent:false,spectatorApproved:false,cloud:{online:false,friends:[],requests:[],inbox:[],publicChat:[],dm:[]},cloudSearch:null,friendVoice:null,pendingVoice:null,matchInvites:[],outgoingInvites:[],outgoingMatchId:null,searchRequestId:0,roomVoiceMuted:false,cloudSetupIssue:null,liveMatchDoc:null,liveMatchStop:null,liveInvitesStop:null,liveProfiles:new Map()};
-let toastTimer=null;
+const state={me:null,tab:'home',room:null,rooms:[],store:[],config:null,friends:[],ranking:[],search:[],world:[],socket:null,selected:null,authView:'login',socialMode:'friends',dmId:null,dmMessages:[],voice:false,localStream:null,peer:null,iceQueue:[],busy:false,boardSize:[3,5,7,9].includes(Number(localStorage.getItem('seega_board_size')))?Number(localStorage.getItem('seega_board_size')):5,gameMode:localStorage.getItem('seega_game_mode')||'seega5',boardTilt:true,chatOpen:false,rankFilter:'coins',captureFx:null,giftFx:null,giftMenuOpen:false,lastFxSeq:null,unreadRoom:0,voicePending:false,voiceConsent:false,spectatorApproved:false,cloud:{online:false,friends:[],requests:[],inbox:[],publicChat:[],dm:[]},cloudSearch:null,friendVoice:null,pendingVoice:null,matchInvites:[],outgoingInvites:[],outgoingMatchId:null,searchRequestId:0,roomVoiceMuted:false,cloudSetupIssue:null,liveMatchDoc:null,liveMatchStop:null,liveInvitesStop:null,liveProfiles:new Map(),liveVoice:null,liveVoiceState:null};
+let toastTimer=null,liveClockInterval=null;
 function toast(m){const el=$('#toast');el.textContent=m;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100);}
 async function api(path,options={}){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json'},credentials:'same-origin',...options});let data;try{data=await r.json();}catch{data={};}if(!r.ok)throw Error(data.error||'حصلت مشكلة في الاتصال');return data;}
 const post=(path,data={})=>api(path,{method:'POST',body:JSON.stringify(data)});
@@ -500,6 +501,32 @@ function startSocket(){if(state.socket){state.socket.disconnect();}const s=state
 function subscribeRoom(){if(!state.socket?.connected||!state.room)return;state.socket.emit('room:subscribe',{id:state.room.id},r=>{if(r?.room){state.room=r.room;render();}});}
 async function enterRoom(r){state.selected=null;state.captureFx=null;state.giftMenuOpen=false;state.giftFx=null;state.lastFxSeq=null;state.room=r;state.voice=false;state.roomVoiceMuted=false;state.voicePending=false;state.chatOpen=false;state.unreadRoom=0;render();cloudPresence().catch(()=>{});if(r.protocol!=='server'){if(state.socket.connected)subscribeRoom();else state.socket.once('connect',subscribeRoom);}window.history.replaceState({},'',`${r.watchOnly?'/watch/':'/room/'}${r.id}`);window.scrollTo(0,0);}
 
+function ensureLiveVoice(){
+ const match=state.liveMatchDoc;
+ if(state.liveVoice?.active())return state.liveVoice;
+ if(!match||!['playing','reconnecting'].includes(match.status))throw Error('الصوت متاح أثناء مباراة حقيقية فقط');
+ const rival=match.players.find(p=>p&&p.uid!==state.me?.firebaseUid);
+ if(!rival)throw Error('مستني المنافس يدخل الأول');
+ state.liveVoice=createLiveVoice({
+  matchId:match.id,myUid:state.me.firebaseUid,otherUid:rival.uid,signal:liveSignal,
+  onIncoming(){
+   if(state.room?.id!==match.id)return;
+   openModal('📞 مكالمة داخل المباراة','<p>منافسك بيطلب مكالمة صوتية. الميكروفون مش هيفتح إلا لو وافقت.</p><div class="call-buttons"><button class="btn btn-mint" data-action="safe-voice-accept">✅ موافق</button><button class="btn btn-secondary" data-action="safe-voice-reject">❌ رفض</button></div>');
+  },
+  onState(x){state.liveVoiceState=x;if(state.room?.id===match.id)render();},
+  onError(e){toast('الصوت التجريبي: '+(e?.message||'فشل الاتصال'));},
+ });
+ return state.liveVoice;
+}
+function liveClockStart(){
+ if(liveClockInterval)return;
+ liveClockInterval=setInterval(()=>{
+  if(state.room?.protocol!=='server')return;
+  const el=document.getElementById('live-countdown');
+  if(el&&state.room.deadline)el.textContent='⏱️ '+Math.max(0,Math.ceil((state.room.deadline-Date.now())/1000))+' ثانية';
+ },500);
+}
+function liveClockStop(){if(liveClockInterval)clearInterval(liveClockInterval);liveClockInterval=null;}
 function liveRoomView(m){
  const game=m.game||(m.mode==='seega3'?initialVariant('seega3'):m.mode.startsWith('seega')?initialGame(Number(m.mode.slice(5))):initialVariant(m.mode));
  const players=m.players.map((p,i)=>{
@@ -543,9 +570,15 @@ async function enterLiveRoom(match){
     name:item.uid===state.me?.firebaseUid?playerName():(state.liveProfiles.get(item.uid)?.name||'المنافس')
    }));if(state.chatOpen)render();
   },
+  onSignal(message){
+   if(state.room?.id!==match.id||!['playing','reconnecting'].includes(state.liveMatchDoc?.status))return;
+   const at=message.at?.toMillis?.()||0;
+   if(at&&Date.now()-at>60000)return;
+   try{ensureLiveVoice().receive(message).catch(e=>toast(e.message));}catch(e){console.info('voice signal ignored',e);}
+  },
   onError(error){if(state.room?.id===match.id)toast('خادم المباراة: '+(error?.message||'انقطع الاتصال'));}
  };
- state.liveMatchStop=await liveWatchMatch(match.id,handlers);
+ state.liveMatchStop=await liveWatchMatch(match.id,handlers);liveClockStart();
  await liveRefreshPlayers(match);
 }
 async function safeOnlinePicker(){
