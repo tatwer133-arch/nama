@@ -47,6 +47,18 @@ test('Chromium: real mobile UI, guest login, bot turns, navigation, and responsi
   assert.deepEqual(pageErrors,[]);
   await page.close();
  });
+ await t.test('staged online flow requires a real Firebase account, never a fake guest match',async()=>{
+  const {page,pageErrors}=await openGuest({width:390,height:844});
+  await page.locator('[data-action="secure-online"]').waitFor({state:'visible'});
+  await page.locator('[data-action="secure-online"]').click();
+  await page.waitForTimeout(100);
+  assert.match(await page.locator('#toast').textContent(),/Firebase/);
+  assert.equal(await page.locator('.room-card').count(),0);
+  const h=await page.evaluate(()=>({body:document.documentElement.scrollWidth,window:window.innerWidth}));
+  assert.ok(h.body<=h.window+3,'Secure matchmaking button overflowed mobile screen');
+  assert.deepEqual(pageErrors,[]);
+  await page.close();
+ });
  await t.test('bot gameplay mounts valid 5x5 board and processes placement',async()=>{
   const {page,pageErrors}=await openGuest({width:390,height:844});
   await page.locator('[data-action="bot"]').first().click();
