@@ -169,11 +169,23 @@ export const signalSeegaVoice=onCall(opts,async req=>{
   assert(typeof toUid==='string'&&toUid.length>0&&toUid!==uid,'Invalid recipient');
   assert(payload&&['voice-request','voice-accept','voice-decline','voice-cancel','offer','answer','candidate','hangup'].includes(payload.type),'Invalid signaling type');
   assert(JSON.stringify(payload).length<=7000,'Signal is too large');
-  const match=await joinedMatch(id,uid);
-  assert(match.status==='playing'||match.status==='reconnecting','Voice only during a real match');
-  assert(match.players.some(p=>p?.uid===toUid),'Recipient not in match');
-  const ref=store.collection('gameMatches').doc(id).collection('signals').doc();
-  await ref.create({fromUid:uid,toUid,payload,at:FieldValue.serverTimestamp()});
+  // Rate-limit and authorize signaling atomically. Malicious participants may
+  // never create unlimited Firestore documents at the project's expense.
+  const roomRef=store.collection('gameMatches').doc(id);
+  const rateRef=roomRef.collection('signalRate').doc(uid),ref=roomRef.collection('signals').doc();
+  await store.runTransaction(async tx=>{
+   const roomSnap=await tx.get(roomRef);
+   assert(roomSnap.exists&&playerRoom(roomSnap.data(),uid),'Room missing or access denied');
+   const match=roomSnap.data();
+   assert(match.status==='playing'||match.status==='reconnecting','Voice only during a real match');
+   assert(match.players.some(p=>p?.uid===toUid),'Recipient not in match');
+   const rateSnap=await tx.get(rateRef);
+   const minute=Math.floor(Date.now()/60000);
+   const prior=rateSnap.exists&&rateSnap.data().minute===minute?rateSnap.data().count:0;
+   assert(prior<100,'Voice signaling rate exceeded');
+   tx.set(rateRef,{minute,count:prior+1});
+   tx.create(ref,{fromUid:uid,toUid,payload,at:FieldValue.serverTimestamp()});
+  });
   return {id:ref.id};
  }catch(e){sendError(e);}
 });
