@@ -117,6 +117,11 @@ test('FIRESTORE: two signed-in players, privacy, friends, chat, voice and match 
   await assertFails(setDoc(ref(alice,'gameWallets/alice'),{balanceMinor:9999999}));
   await assertFails(getDoc(ref(alice,'gameLedger/escrow:ABCDEF')));
   await assertSucceeds(getDoc(ref(bob,'gameInvitations/ABCDEF__bob')));
+  await assertSucceeds(getDocs(query(collection(bob,'gameInvitations'),where('toUid','==','bob'))));
+  await assertFails(getDocs(query(collection(stranger,'gameInvitations'),where('toUid','==','bob'))));
+  await assertSucceeds(getDocs(query(collection(bob,'gameMatches/ABCDEF/signals'),where('toUid','==','bob'))));
+  await assertFails(getDocs(query(collection(alice,'gameMatches/ABCDEF/signals'),where('toUid','==','bob'))));
+
   await assertFails(getDoc(ref(stranger,'gameInvitations/ABCDEF__bob')));
   await assertSucceeds(getDoc(ref(alice,'gameMatches/ABCDEF/chat/hello')));
   await assertFails(getDoc(ref(stranger,'gameMatches/ABCDEF/chat/hello')));
