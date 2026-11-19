@@ -56,13 +56,13 @@ export function transition(original,cmd,{now=Date.now(),engine}={}){
  case 'invite':
   waiting();host();requireState(m.type==='private'&&cmd.friendUid&&cmd.friendUid!==uid,'Invalid invitation');
   const existing=m.invites.find(i=>i.uid===cmd.friendUid);
-  if(existing)existing.status='pending';else m.invites.push({uid:cmd.friendUid,status:'pending'});
+  if(existing){existing.status='pending';existing.createdAt=now;}else m.invites.push({uid:cmd.friendUid,status:'pending',createdAt:now});
   events.push({kind:'invite',uid:cmd.friendUid});break;
  case 'accept':
-  waiting();requireState(m.type==='private'&&!m.players[1]&&m.invites.some(i=>i.uid===uid&&i.status==='pending'),'Room full or invitation expired');
+  waiting();requireState(m.type==='private'&&!m.players[1]&&m.invites.some(i=>i.uid===uid&&i.status==='pending'&&(!Number.isFinite(i.createdAt)||now<i.createdAt+300000)),'Room full or invitation expired');
   m.players[1]=person(uid);m.invites.forEach(i=>i.status=i.uid===uid?'accepted':'cancelled');events.push({kind:'joined',uid});break;
  case 'kick':
-  prestart();host();requireState(m.players[1],'No opponent');cancelPending();
+  prestart();host();requireState(m.type==='private'&&m.players[1],'Private-room host kick only');cancelPending();
   events.push({kind:'kick',uid:m.players[1].uid});
   m.invites.filter(i=>i.uid===m.players[1].uid).forEach(i=>i.status='cancelled');
   m.players[1]=null;readyReset();break;
