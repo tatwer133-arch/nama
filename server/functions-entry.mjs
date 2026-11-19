@@ -58,7 +58,7 @@ async function scheduleTurn(match){
  if(!match||!['playing','reconnecting'].includes(match.status)||!Number.isFinite(match.deadline))return;
  const delay=Math.max(1,Math.ceil((match.deadline-Date.now())/1000));
  try{
-  await getFunctions().taskQueue('expireSeegaTurn').enqueue({matchId:match.id,version:match.version},
+  await getFunctions().taskQueue('locations/'+REGION+'/functions/expireSeegaTurn').enqueue({matchId:match.id,version:match.version},
    {scheduleDelaySeconds:delay});
  }catch(e){
   // State is already committed: scheduler fallback will handle the timeout.
