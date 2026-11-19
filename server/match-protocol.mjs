@@ -35,7 +35,7 @@ export function payout(m,winner){
 export function transition(original,cmd,{now=Date.now(),engine}={}){
  const m=copy(original),events=[],uid=cmd.actorUid;
  const server=['escrow-ok','escrow-failed','auto-move','disconnect-timeout'].includes(cmd.type);
- requireState(server?cmd.fromServer===true:player(m,uid)||cmd.type==='accept'||cmd.type==='quick-join','Unauthorized command');
+ requireState(server?cmd.fromServer===true:player(m,uid)||['accept','decline','quick-join'].includes(cmd.type),'Unauthorized command');
  if(cmd.id&&m.commandIds.includes(cmd.id))return {match:original,events:[],duplicate:true};
  const waiting=()=>requireState(m.status==='waiting','Room already started');
  const prestart=()=>requireState(['waiting','pending_escrow'].includes(m.status),'Match already started');
@@ -61,6 +61,9 @@ export function transition(original,cmd,{now=Date.now(),engine}={}){
  case 'accept':
   waiting();requireState(m.type==='private'&&!m.players[1]&&m.invites.some(i=>i.uid===uid&&i.status==='pending'&&(!Number.isFinite(i.createdAt)||now<i.createdAt+300000)),'Room full or invitation expired');
   m.players[1]=person(uid);m.invites.forEach(i=>i.status=i.uid===uid?'accepted':'cancelled');events.push({kind:'joined',uid});break;
+ case 'decline':
+  waiting();requireState(m.type==='private'&&m.invites.some(i=>i.uid===uid&&i.status==='pending'),'No pending invitation');
+  m.invites.find(i=>i.uid===uid).status='rejected';events.push({kind:'decline',uid});break;
  case 'kick':
   prestart();host();requireState(m.type==='private'&&m.players[1],'Private-room host kick only');cancelPending();
   events.push({kind:'kick',uid:m.players[1].uid});
