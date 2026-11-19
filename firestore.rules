@@ -234,6 +234,50 @@ service cloud.firestore {
         );
       allow delete: if false;
     }
+
+    // The following collections belong exclusively to the Firebase Admin
+    // backend. The client may subscribe to its OWN match/chat/signals but
+    // cannot mutate match state, wagers, queue entries or escrow.
+    function matchMember(matchId) {
+      return signed() &&
+        exists(/databases/$(database)/documents/gameMatches/$(matchId)) &&
+        (
+          get(/databases/$(database)/documents/gameMatches/$(matchId)).data.players[0].uid == request.auth.uid ||
+          (
+            get(/databases/$(database)/documents/gameMatches/$(matchId)).data.players[1] is map &&
+            get(/databases/$(database)/documents/gameMatches/$(matchId)).data.players[1].uid == request.auth.uid
+          )
+        );
+    }
+    match /gameMatches/{matchId} {
+      allow get: if matchMember(matchId);
+      allow list,create,update,delete: if false;
+      match /chat/{messageId} {
+        allow get,list: if matchMember(matchId);
+        allow create,update,delete: if false;
+      }
+      match /signals/{signalId} {
+        allow get,list: if matchMember(matchId) &&
+          resource.data.toUid == request.auth.uid;
+        allow create,update,delete: if false;
+      }
+      match /chatThrottle/{uid} { allow read,write: if false; }
+    }
+    match /gameInvitations/{id} {
+      allow get,list: if signed() &&
+        (resource.data.fromUid == request.auth.uid ||
+         resource.data.toUid == request.auth.uid);
+      allow create,update,delete: if false;
+    }
+    match /gameWallets/{uid} {
+      allow get: if own(uid);
+      allow list,create,update,delete: if false;
+    }
+    match /gameQueues/{id} { allow read,write: if false; }
+    match /gameActive/{uid} { allow read,write: if false; }
+    match /gameLedger/{id} { allow read,write: if false; }
+    match /gameHouse/{id} { allow read,write: if false; }
+
     match /{document=**} {allow read,write: if false;}
   }
 }
