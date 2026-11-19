@@ -5,6 +5,7 @@ on:
       - seega-royale-matchflow-staging-20261119
     paths:
       - 'server/**'
+      - 'public/**'
       - 'tests/**'
       - 'qa/**'
       - 'firestore.rules'
