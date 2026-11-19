@@ -77,6 +77,8 @@ export async function executePlayerCommand(db,{token,matchId,command,engine,now=
    if(event.kind==='reserve-both-atomically')next=await reserve(tx,next,engine,now);
   }
   for(const event of result.events)if(event.kind==='settle-once')await settle(tx,next,now);
+  if(!result.duplicate&&next.type==='private'&&tx.putInvitation)
+   for(const inv of next.invites)tx.putInvitation(next.id,inv.uid,{matchId:next.id,fromUid:next.ownerUid,toUid:inv.uid,mode:next.mode,status:inv.status,createdAt:now,expiresAt:now+300000});
   if(!result.duplicate&&command.type==='accept'&&tx.putActive)tx.putActive(uid,matchId);
   if(!result.duplicate&&old.players[1]&&!next.players[1]&&tx.deleteActive)tx.deleteActive(old.players[1].uid);
   if(['finished','cancelled'].includes(next.status)&&tx.deleteActive)
