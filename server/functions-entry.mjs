@@ -120,6 +120,18 @@ export const commandSeegaMatch=onCall(opts,async req=>{
   return openResult(result);
  }catch(e){sendError(e);}
 });
+export const resumeSeegaMatch=onCall(opts,async req=>{
+ const uid=auth(req);
+ try{
+  const active=await store.collection('gameActive').doc(uid).get();
+  if(!active.exists)return {match:null};
+  const ref=store.collection('gameMatches').doc(active.data().matchId);
+  const match=await ref.get();
+  if(!match.exists||!playerRoom(match.data(),uid)||['finished','cancelled'].includes(match.data().status))
+   return {match:null};
+  return {match:match.data()};
+ }catch(e){sendError(e);}
+});
 export const readSeegaWallet=onCall(opts,async req=>{
  const uid=auth(req);
  const snap=await store.collection('gameWallets').doc(uid).get();
