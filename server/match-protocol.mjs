@@ -55,14 +55,17 @@ export function transition(original,cmd,{now=Date.now(),engine}={}){
   m.players[1]=person(uid);events.push({kind:'joined',uid});break;
  case 'invite':
   waiting();host();requireState(m.type==='private'&&cmd.friendUid&&cmd.friendUid!==uid,'Invalid invitation');
-  if(!m.invites.some(i=>i.uid===cmd.friendUid))m.invites.push({uid:cmd.friendUid,status:'pending'});
+  const existing=m.invites.find(i=>i.uid===cmd.friendUid);
+  if(existing)existing.status='pending';else m.invites.push({uid:cmd.friendUid,status:'pending'});
   events.push({kind:'invite',uid:cmd.friendUid});break;
  case 'accept':
   waiting();requireState(m.type==='private'&&!m.players[1]&&m.invites.some(i=>i.uid===uid&&i.status==='pending'),'Room full or invitation expired');
   m.players[1]=person(uid);m.invites.forEach(i=>i.status=i.uid===uid?'accepted':'cancelled');events.push({kind:'joined',uid});break;
  case 'kick':
   prestart();host();requireState(m.players[1],'No opponent');cancelPending();
-  events.push({kind:'kick',uid:m.players[1].uid});m.players[1]=null;readyReset();break;
+  events.push({kind:'kick',uid:m.players[1].uid});
+  m.invites.filter(i=>i.uid===m.players[1].uid).forEach(i=>i.status='cancelled');
+  m.players[1]=null;readyReset();break;
  case 'ready':
   waiting();requireState(m.players[1]&&player(m,uid),'Waiting for opponent');player(m,uid).ready=!!cmd.ready;
   if(m.players.every(p=>p?.ready)){
@@ -78,7 +81,7 @@ export function transition(original,cmd,{now=Date.now(),engine}={}){
  case 'leave':
   if(['waiting','pending_escrow'].includes(m.status)){cancelPending();
    if(uid===m.ownerUid){m.status='cancelled';m.invites.forEach(i=>i.status='cancelled');}
-   else {m.players[1]=null;readyReset();}
+   else {m.players[1]=null;m.invites.filter(i=>i.uid===uid).forEach(i=>i.status='cancelled');readyReset();}
    events.push({kind:'left-without-penalty',uid});
   }else {const other=m.players.find(p=>p&&p.uid!==uid);requireState(other,'Missing rival');finish(other.uid,'forfeit');}break;
  case 'disconnect':
