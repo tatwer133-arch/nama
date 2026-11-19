@@ -656,6 +656,34 @@ async function doCell(i){const r=state.room,g=r?.game;if(!r||r.watchOnly||r.stat
  try{await emit('game:action',{id:r.id,action});state.selected=null;}catch(e){toast(e.message);}}
 const avatars=['🦁','👑','🐪','🦅','🐈','🪷','👸','🧑','🧕','👨','👩'];
 async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
+ if(a==='secure-online'){await safeOnlinePicker();return;}
+ if(a==='safe-quick'){
+  const stake=Number(b.dataset.stake);if(!Number.isSafeInteger(stake))throw Error('رهان غير صحيح');
+  const result=await liveOpenQuick(state.gameMode,stake);closeModal();await enterLiveRoom(result.match);return;
+ }
+ if(a==='safe-private'){
+  const result=await liveOpenPrivate(state.gameMode);closeModal();await enterLiveRoom(result.match);return;
+ }
+ if(a==='safe-ready'){
+  await liveCommand(state.room.id,'ready',{ready:!state.liveMatchDoc?.players?.find(p=>p?.uid===state.me?.firebaseUid)?.ready});return;
+ }
+ if(a==='safe-invite'){safeInvitePicker();return;}
+ if(a==='safe-invite-friend'){
+  await liveCommand(state.room.id,'invite',{friendUid:b.dataset.uid});
+  closeModal();toast('📨 دعوة المباراة اتبعتت لصاحبك');return;
+ }
+ if(a==='safe-kick'){await liveCommand(state.room.id,'kick');toast('تم إخراج اللاعب قبل بداية المباراة');return;}
+ if(a==='safe-leave'){
+  if(state.room?.stakeMinor&&state.room?.status==='playing'&&!window.confirm('الخروج الآن يخسرك الرهان الافتراضي للمباراة. متأكد؟'))return;
+  await leaveRoom();return;
+ }
+ if(a==='safe-accept'){
+  const matchId=b.dataset.match;
+  const result=await liveCommand(matchId,'accept');closeModal();await enterLiveRoom(result.match);return;
+ }
+ if(a==='safe-decline'){
+  await liveCommand(b.dataset.match,'decline');closeModal();toast('تم رفض الدعوة');return;
+ }
  if(['bot','local','quick','private','public','vip'].includes(a)){await createRoom(a);return;}
  if(a==='daily'){const v=await post('/daily');setMe(v.user);sound();toast('مبروك! +٤٥٠ كوين و+١٠ جواهر 🎁');render();}
  else if(a==='join-code')await joinRoom($('#join-code')?.value.trim()||'');
@@ -696,7 +724,7 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='rules')showRules();
  else if(a==='close-modal')closeModal();
  else if(a==='cloud-info'){openModal('إعداد خدمات Firebase',`<p>${esc(state.cloudSetupIssue||'تحتاج بعض الخدمات لتفعيل قواعد Firestore.')}</p><p class="muted">اللعب كضيف وباقي خصائص اللعبة متاحة. لإصلاح الصلاحيات افتح قواعد Firestore وانشر نسخة الملف الموجودة في GitHub.</p><button data-action="close-modal" class="btn btn-secondary full">تمام</button>`);}
- else if(a==='logout'){stopMusic();if(state.room)await leaveRoom();await voiceOff();await friendCallsStop().catch(()=>{});await matchInvitesStop().catch(()=>{});await post('/auth/logout');if(firebaseReady()){await cloudSocialStop().catch(()=>{});await firebaseLogout().catch(()=>{});}state.socket?.disconnect();state.me=null;state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[],unread:0};state.matchInvites=[];state.outgoingInvites=[];state.outgoingMatchId=null;$('#auth-cover').classList.remove('hidden');updateSocialBadge();updateFriendVoiceBar();view('home');}
+ else if(a==='logout'){try{state.liveMatchStop?.();state.liveInvitesStop?.();}catch{}state.liveMatchStop=null;state.liveInvitesStop=null;stopMusic();if(state.room)await leaveRoom();await voiceOff();await friendCallsStop().catch(()=>{});await matchInvitesStop().catch(()=>{});await post('/auth/logout');if(firebaseReady()){await cloudSocialStop().catch(()=>{});await firebaseLogout().catch(()=>{});}state.socket?.disconnect();state.me=null;state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[],unread:0};state.matchInvites=[];state.outgoingInvites=[];state.outgoingMatchId=null;$('#auth-cover').classList.remove('hidden');updateSocialBadge();updateFriendVoiceBar();view('home');}
  else if(a==='cell')await doCell(Number(b.dataset.cell));
  else if(a==='share-room')shareRoom();
  else if(a==='share-watch')shareWatch();
@@ -878,6 +906,19 @@ async function authReady(u){
    },
    onStatus:msg=>{if(msg.kind==='error'){state.cloudSetupIssue=msg.text;return;}notifyPlayer(msg.text);}
   }).catch(e=>{state.cloudSetupIssue='دعوات المباراة تحتاج صلاحيات Firestore المحدثة: '+e.message;});
+  liveWatchInvitations({
+   onInvitation(inv){
+    const sender=(state.cloud?.friends||[]).find(f=>f.uid===inv.fromUid);
+    const name=sender?.user?.name||'صديقك';
+    notifyPlayer('🎲 دعوة مباراة آمنة من '+name);
+    if(!state.room&&!$('#modal-root')?.firstChild){
+     openModal('🎲 دعوة غرفة خاصة',`<p>${esc(name)} دعاك للعب سيجا. الغرفة ما بتبدأش إلا بعد موافقتك وReady.</p>
+      <button class="btn btn-mint full" data-action="safe-accept" data-match="${esc(inv.matchId)}">✅ موافقة</button>
+      <button class="btn btn-secondary full" data-action="safe-decline" data-match="${esc(inv.matchId)}">❌ رفض</button>`);
+    }
+   },
+   onError(e){console.info('Match invitation subscription unavailable',e);}
+  }).then(off=>{state.liveInvitesStop=off;}).catch(e=>{console.info('Secure invitations not yet available',e);});
   friendCallsStart({
    onIncoming:({id,uid})=>{
     state.pendingVoice={id,uid};
