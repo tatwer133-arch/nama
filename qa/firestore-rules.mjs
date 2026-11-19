@@ -96,6 +96,34 @@ test('FIRESTORE: two signed-in players, privacy, friends, chat, voice and match 
   await assertSucceeds(updateDoc(ref(alice,'friendCalls/call1'),{state:'ended',updatedAt:serverTimestamp()}));
   assert.equal((await assertSucceeds(getDoc(ref(bob,'friendCalls/call1')))).data()?.state,'ended');
  });
+ await t.test('server-only match state and real wallets: participants read, all clients cannot write',async()=>{
+  await env.withSecurityRulesDisabled(async context=>{
+   const admin=context.firestore();
+   await setDoc(ref(admin,'gameMatches/ABCDEF'),{
+    id:'ABCDEF',players:[{uid:'alice'},{uid:'bob'}],status:'playing'
+   });
+   await setDoc(ref(admin,'gameWallets/alice'),{balanceMinor:250000});
+   await setDoc(ref(admin,'gameLedger/escrow:ABCDEF'),{amountMinor:10000});
+   await setDoc(ref(admin,'gameInvitations/ABCDEF__bob'),{fromUid:'alice',toUid:'bob',matchId:'ABCDEF',status:'accepted'});
+   await setDoc(ref(admin,'gameMatches/ABCDEF/chat/hello'),{uid:'alice',text:'Hi'});
+   await setDoc(ref(admin,'gameMatches/ABCDEF/signals/test'),{fromUid:'alice',toUid:'bob',payload:{type:'candidate'}});
+  });
+  await assertSucceeds(getDoc(ref(alice,'gameMatches/ABCDEF')));
+  await assertSucceeds(getDoc(ref(bob,'gameMatches/ABCDEF')));
+  await assertFails(getDoc(ref(stranger,'gameMatches/ABCDEF')));
+  await assertFails(setDoc(ref(alice,'gameMatches/ABCDEF'),{players:[]}));
+  await assertSucceeds(getDoc(ref(alice,'gameWallets/alice')));
+  await assertFails(getDoc(ref(bob,'gameWallets/alice')));
+  await assertFails(setDoc(ref(alice,'gameWallets/alice'),{balanceMinor:9999999}));
+  await assertFails(getDoc(ref(alice,'gameLedger/escrow:ABCDEF')));
+  await assertSucceeds(getDoc(ref(bob,'gameInvitations/ABCDEF__bob')));
+  await assertFails(getDoc(ref(stranger,'gameInvitations/ABCDEF__bob')));
+  await assertSucceeds(getDoc(ref(alice,'gameMatches/ABCDEF/chat/hello')));
+  await assertFails(getDoc(ref(stranger,'gameMatches/ABCDEF/chat/hello')));
+  await assertSucceeds(getDoc(ref(bob,'gameMatches/ABCDEF/signals/test')));
+  await assertFails(getDoc(ref(alice,'gameMatches/ABCDEF/signals/test')));
+  await assertFails(setDoc(ref(bob,'gameMatches/ABCDEF/chat/evil'),{uid:'bob',text:'cheat'}));
+ });
  await t.test('no wallet manipulation or unrestricted document access',async()=>{
   await assertFails(setDoc(ref(alice,'players/alice'),{ownerUid:'alice',id:'SG-A1A1A1A1A1',name:'Zeko',avatar:'🦁',color:'ruby',settings:{sound:true,music:true},updatedAt:Date.now(),coins:99999}));
   await assertFails(setDoc(ref(stranger,'wallets/eve'),{coins:999999}));
