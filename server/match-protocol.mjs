@@ -34,7 +34,7 @@ export function payout(m,winner){
 }
 export function transition(original,cmd,{now=Date.now(),engine}={}){
  const m=copy(original),events=[],uid=cmd.actorUid;
- const server=['escrow-ok','escrow-failed','auto-move','disconnect-timeout','disconnect'].includes(cmd.type);
+ const server=['escrow-ok','escrow-failed','auto-move','disconnect-timeout'].includes(cmd.type);
  requireState(server?cmd.fromServer===true:player(m,uid)||['accept','decline','quick-join'].includes(cmd.type),'Unauthorized command');
  if(cmd.id&&m.commandIds.includes(cmd.id))return {match:original,events:[],duplicate:true};
  const waiting=()=>requireState(m.status==='waiting','Room already started');
