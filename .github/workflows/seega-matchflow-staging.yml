@@ -36,6 +36,8 @@ jobs:
           node --check server/ledger-service.mjs
           node --check public/game-engine.js
           node --check public/variants.js
+          node --check public/app.js
+          node --check public/live-match.js
       - name: Run state-machine and durable-store mock tests
         run: npm run test:match-protocol
   firestore-rules:
