@@ -25,7 +25,7 @@ const getSdk=async()=>{
 export async function liveUid(){return (await getSdk()).uid;}
 export async function liveCall(name,body={}){
  const s=await getSdk();
- const names=new Set(['openSeegaQuick','openSeegaPrivate','commandSeegaMatch','readSeegaWallet','postSeegaChat','signalSeegaVoice']);
+ const names=new Set(['openSeegaQuick','openSeegaPrivate','resumeSeegaMatch','commandSeegaMatch','readSeegaWallet','postSeegaChat','signalSeegaVoice']);
  if(!names.has(name))throw Error('Unapproved game command');
  try{
   const answer=await s.functions.httpsCallable(s.func,name,{timeout:30000})(body);
@@ -40,6 +40,7 @@ export async function liveCall(name,body={}){
 }
 export const liveOpenQuick=(mode,stakeMinor)=>liveCall('openSeegaQuick',{mode,stakeMinor});
 export const liveOpenPrivate=mode=>liveCall('openSeegaPrivate',{mode});
+export const liveResume=()=>liveCall('resumeSeegaMatch');
 export const liveWallet=()=>liveCall('readSeegaWallet');
 export const liveCommand=(matchId,type,extra={})=>liveCall('commandSeegaMatch',{
  matchId,
