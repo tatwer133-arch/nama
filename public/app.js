@@ -403,7 +403,7 @@ function roomControls(){
   const canReady=r.status==='waiting'&&hasRival;
   const host=doc?.ownerUid===state.me?.firebaseUid;
   const seconds=r.deadline?Math.max(0,Math.ceil((r.deadline-Date.now())/1000)):null;
-  return `<div class="room-quickbar"><span class="peer-state ${r.status==='playing'?'connected':''}">☁️ مباراة على الخادم · ${esc(r.status)}</span><span class="pill">🪙 رهان: ${fmt((r.stakeMinor||0)/100)}</span>${canReady?`<button class="btn btn-mint" data-action="safe-ready">${me?.ready?'✅ جاهز — إلغاء':'✅ أنا جاهز'}</button>`:''}${host&&r.status==='waiting'&&doc.type==='private'?`<button class="btn btn-secondary" data-action="safe-invite">➕ دعوة صديق</button>${hasRival?'<button class="btn btn-secondary" data-action="safe-kick">🚫 طرد المنافس</button>':''}`:''}${seconds!==null&&r.status==='playing'?`<span class="pill" id="live-countdown">⏱️ ${seconds} ثانية</span>`:''}<button class="btn btn-secondary" data-action="safe-leave">خروج</button></div>${r.status==='waiting'?`<div class="wait-panel">${hasRival?'في انتظار Ready من اللاعبين':'مستني لاعب حقيقي بنفس نوع السيجا والرهان'}</div>`:''}`;
+  return `<div class="room-quickbar"><span class="peer-state ${r.status==='playing'?'connected':''}">☁️ مباراة على الخادم · ${esc(r.status)}</span><span class="pill">🪙 رهان: ${fmt((r.stakeMinor||0)/100)}</span>${canReady?`<button class="btn btn-mint" data-action="safe-ready">${me?.ready?'✅ جاهز — إلغاء':'✅ أنا جاهز'}</button>`:''}${host&&r.status==='waiting'&&doc.type==='private'?`<button class="btn btn-secondary" data-action="safe-invite">➕ دعوة صديق</button>${hasRival?'<button class="btn btn-secondary" data-action="safe-kick">🚫 طرد المنافس</button>':''}`:''}${seconds!==null&&r.status==='playing'?`<span class="pill" id="live-countdown">⏱️ ${seconds} ثانية</span>`:''}${r.status==='playing'?`<button class="btn btn-secondary" data-action="safe-voice">${['outgoing','connecting','connected'].includes(state.liveVoiceState?.status)?'📴 إنهاء الصوت':'📞 مكالمة تجريبية'}</button>${state.liveVoice?.hasStream()?`<button class="btn btn-secondary" data-action="safe-voice-mute">${state.liveVoiceState?.muted?'🔇 فتح المايك':'🎙️ كتم المايك'}</button>`:''}`:''}<button class="btn btn-secondary" data-action="safe-leave">خروج</button></div>${r.status==='waiting'?`<div class="wait-panel">${hasRival?'في انتظار Ready من اللاعبين':'مستني لاعب حقيقي بنفس نوع السيجا والرهان'}</div>`:''}`;
  }
  return `<div class="room-quickbar">${r.watchOnly?`<span class="peer-state connected">👀 مشاهدة فقط · ${(r.viewers||[]).length} مشاهد</span><span class="pill">ممنوع التحريك والفويس</span>`:r.kind==='online'?`<span class="peer-state ${r.status==='playing'?'connected':''}">${r.status==='playing'?'🟢 متصل':'🟠 بانتظار المنافس'}</span><button data-action="share-room" class="btn btn-mint">📨 ادعُ لاعب ${r.id}</button><button class="btn btn-secondary" data-action="voice">${state.voice?'📴 إنهاء المكالمة':state.voicePending?'⌛ طلب المايك':'📞 اتصال صوتي'}</button>${state.voice?`<button class="btn btn-secondary" data-action="room-voice-mute" aria-pressed="${state.roomVoiceMuted}" aria-label="${state.roomVoiceMuted?'فتح الميكروفون':'كتم الميكروفون'}">${state.roomVoiceMuted?'🔇 مكتوم — فتح':'🎙️ كتم المايك'}</button>`:''}${r.owner===state.me.id?`<button class="btn btn-secondary" data-action="toggle-spectators" title="السماح للمشاهدين">${r.allowSpectators?'👀 اقفل المشاهدة':'👁️ افتح المشاهدة'}</button>`:''}${r.allowSpectators?`<button class="btn btn-secondary" data-action="share-watch">🔗 لينك المشاهدة</button>`:''}<button class="btn btn-secondary" data-action="quick-social" title="الأصدقاء والشات العام">👥 الأصدقاء</button>`:''}<span class="board-3d-badge">✦ 3D</span></div>${r.kind==='online'&&r.status==='waiting'?`<div class="wait-panel">📡 الغرفة مفتوحة — ابعت لصاحبك اللينك وسيب الصفحة مفتوحة.<br><b dir="ltr">${esc(location.origin+'/room/'+r.id)}</b><br><button data-action="share-room" class="btn btn-primary">📋 نسخ الدعوة</button></div>`:''}`;
 }
@@ -628,6 +628,7 @@ function shareWatch(){const r=state.room;if(!r?.allowSpectators)return toast('ا
 async function leaveRoom(){if(!state.room)return;
  if(state.room.protocol==='server'){
   const r=state.room;if(r.status!=='finished'&&r.status!=='cancelled')await liveCommand(r.id,'leave');
+  try{state.liveVoice?.close();}catch{}state.liveVoice=null;state.liveVoiceState=null;liveClockStop();
   try{state.liveMatchStop?.();}catch{}state.liveMatchStop=null;state.liveMatchDoc=null;
   state.room=null;state.chatOpen=false;state.unreadRoom=0;window.history.replaceState({},'','/');view('home');return;
  }
@@ -690,6 +691,16 @@ async function doCell(i){const r=state.room,g=r?.game;if(!r||r.watchOnly||r.stat
 const avatars=['🦁','👑','🐪','🦅','🐈','🪷','👸','🧑','🧕','👨','👩'];
 async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  if(a==='secure-online'){await safeOnlinePicker();return;}
+ if(a==='safe-voice'){
+  const voice=ensureLiveVoice();
+  if(['outgoing','connecting','connected'].includes(state.liveVoiceState?.status)){
+   await voice.hangup();state.liveVoice=null;state.liveVoiceState=null;render();
+  }else{await voice.request();toast('📞 بعت طلب موافقة للمنافس');}
+  return;
+ }
+ if(a==='safe-voice-accept'){await ensureLiveVoice().accept();closeModal();return;}
+ if(a==='safe-voice-reject'){await ensureLiveVoice().decline();closeModal();return;}
+ if(a==='safe-voice-mute'){const muted=ensureLiveVoice().mute();toast(muted?'🔇 اتكتم المايك عندك':'🎙️ المايك مفتوح');return;}
  if(a==='safe-quick'){
   const stake=Number(b.dataset.stake);if(!Number.isSafeInteger(stake))throw Error('رهان غير صحيح');
   const result=await liveOpenQuick(state.gameMode,stake);closeModal();await enterLiveRoom(result.match);return;
@@ -757,7 +768,7 @@ async function clickAction(b){const a=b.dataset.action,id=b.dataset.id;try{
  else if(a==='rules')showRules();
  else if(a==='close-modal')closeModal();
  else if(a==='cloud-info'){openModal('إعداد خدمات Firebase',`<p>${esc(state.cloudSetupIssue||'تحتاج بعض الخدمات لتفعيل قواعد Firestore.')}</p><p class="muted">اللعب كضيف وباقي خصائص اللعبة متاحة. لإصلاح الصلاحيات افتح قواعد Firestore وانشر نسخة الملف الموجودة في GitHub.</p><button data-action="close-modal" class="btn btn-secondary full">تمام</button>`);}
- else if(a==='logout'){try{state.liveMatchStop?.();state.liveInvitesStop?.();}catch{}state.liveMatchStop=null;state.liveInvitesStop=null;stopMusic();if(state.room)await leaveRoom();await voiceOff();await friendCallsStop().catch(()=>{});await matchInvitesStop().catch(()=>{});await post('/auth/logout');if(firebaseReady()){await cloudSocialStop().catch(()=>{});await firebaseLogout().catch(()=>{});}state.socket?.disconnect();state.me=null;state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[],unread:0};state.matchInvites=[];state.outgoingInvites=[];state.outgoingMatchId=null;$('#auth-cover').classList.remove('hidden');updateSocialBadge();updateFriendVoiceBar();view('home');}
+ else if(a==='logout'){try{state.liveVoice?.close();}catch{}state.liveVoice=null;state.liveVoiceState=null;liveClockStop();try{state.liveMatchStop?.();state.liveInvitesStop?.();}catch{}state.liveMatchStop=null;state.liveInvitesStop=null;stopMusic();if(state.room)await leaveRoom();await voiceOff();await friendCallsStop().catch(()=>{});await matchInvitesStop().catch(()=>{});await post('/auth/logout');if(firebaseReady()){await cloudSocialStop().catch(()=>{});await firebaseLogout().catch(()=>{});}state.socket?.disconnect();state.me=null;state.cloud={online:false,friends:[],requests:[],publicChat:[],inbox:[],dm:[],unread:0};state.matchInvites=[];state.outgoingInvites=[];state.outgoingMatchId=null;$('#auth-cover').classList.remove('hidden');updateSocialBadge();updateFriendVoiceBar();view('home');}
  else if(a==='cell')await doCell(Number(b.dataset.cell));
  else if(a==='share-room')shareRoom();
  else if(a==='share-watch')shareWatch();
