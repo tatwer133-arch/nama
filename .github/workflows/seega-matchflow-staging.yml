@@ -38,6 +38,7 @@ jobs:
           node --check public/variants.js
           node --check public/app.js
           node --check public/live-match.js
+          node --check public/live-voice.js
       - name: Run state-machine and durable-store mock tests
         run: npm run test:match-protocol
   firestore-rules:
