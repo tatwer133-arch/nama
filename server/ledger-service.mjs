@@ -20,6 +20,12 @@ async function reserve(tx,match,engine,now){
  if(await tx.getLedger(id))return match;
  const [a,b]=match.players.map(x=>x?.uid);
  assert(a&&b&&a!==b,'Two distinct players required');
+ // Free quick games are usable before any audited wallet migration.
+ // Still create one idempotent 0-value escrow record and start atomically.
+ if(match.stakeMinor===0){
+  await tx.putLedger(id,{id,matchId:match.id,type:'escrow',users:[a,b],amountMinor:0,at:now});
+  return transition(match,{type:'escrow-ok',fromServer:true,ref:id},{engine,now}).match;
+ }
  const wA=await getMoney(tx,a),wB=await getMoney(tx,b);
  assert(wA.balanceMinor>=match.stakeMinor&&wB.balanceMinor>=match.stakeMinor,'Insufficient balance');
  // Both debits, ledger write and match-start MUST commit in one transaction.
