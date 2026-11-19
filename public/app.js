@@ -499,6 +499,77 @@ function startSocket(){if(state.socket){state.socket.disconnect();}const s=state
 }
 function subscribeRoom(){if(!state.socket?.connected||!state.room)return;state.socket.emit('room:subscribe',{id:state.room.id},r=>{if(r?.room){state.room=r.room;render();}});}
 async function enterRoom(r){state.selected=null;state.captureFx=null;state.giftMenuOpen=false;state.giftFx=null;state.lastFxSeq=null;state.room=r;state.voice=false;state.roomVoiceMuted=false;state.voicePending=false;state.chatOpen=false;state.unreadRoom=0;render();cloudPresence().catch(()=>{});if(r.protocol!=='server'){if(state.socket.connected)subscribeRoom();else state.socket.once('connect',subscribeRoom);}window.history.replaceState({},'',`${r.watchOnly?'/watch/':'/room/'}${r.id}`);window.scrollTo(0,0);}
+
+function liveRoomView(m){
+ const game=m.game||(m.mode==='seega3'?initialVariant('seega3'):m.mode.startsWith('seega')?initialGame(Number(m.mode.slice(5))):initialVariant(m.mode));
+ const players=m.players.map((p,i)=>{
+  if(!p)return{id:'waiting',name:'في انتظار لاعب',avatar:'⏳',color:i?'ocean':'ruby'};
+  if(p.uid===state.me?.firebaseUid)return{...state.me,uid:p.uid};
+  const pub=state.liveProfiles.get(p.uid)||{};
+  return{uid:p.uid,id:pub.id||'cloud:'+p.uid,name:pub.name||'لاعب حقيقي',avatar:pub.avatar||'🎮',
+   photo:pub.photo||null,color:i?'ocean':'ruby'};
+ });
+ return{id:m.id,protocol:'server',kind:'online',type:m.type,mode:m.mode,status:m.status,owner:m.ownerUid===state.me?.firebaseUid?state.me?.id:'cloud-host',
+  players,game,chat:state.room?.id===m.id?state.room.chat||[]:[],count:m.players.filter(Boolean).length,
+  stakeMinor:m.stakeMinor||0,deadline:m.deadline,version:m.version};
+}
+async function liveRefreshPlayers(match){
+ for(const p of match.players.filter(Boolean)){
+  if(p.uid===state.me?.firebaseUid||state.liveProfiles.has(p.uid))continue;
+  try{
+   const profile=await liveProfile(p.uid);
+   state.liveProfiles.set(p.uid,profile||{});
+   if(state.liveMatchDoc?.id===match.id&&state.room?.protocol==='server'){
+    state.room=liveRoomView(state.liveMatchDoc);render();
+   }
+  }catch(e){console.info('Match player directory not ready',e);}
+ }
+}
+async function enterLiveRoom(match){
+ if(state.room&&state.room.id!==match.id)throw Error('اخرج من المباراة الحالية أولًا');
+ try{state.liveMatchStop?.();}catch{}
+ state.liveMatchStop=null;state.liveMatchDoc=match;
+ await enterRoom(liveRoomView(match));
+ const handlers={
+  onMatch(next){
+   if(state.room?.id!==match.id||state.room.protocol!=='server')return;
+   state.liveMatchDoc=next;state.room=liveRoomView(next);render();
+   liveRefreshPlayers(next).catch(()=>{});
+  },
+  onChat(items){
+   if(state.room?.id!==match.id||state.room.protocol!=='server')return;
+   state.room.chat=items.map(item=>({...item,
+    uid:item.uid===state.me?.firebaseUid?state.me.id:item.uid,
+    name:item.uid===state.me?.firebaseUid?playerName():(state.liveProfiles.get(item.uid)?.name||'المنافس')
+   }));if(state.chatOpen)render();
+  },
+  onError(error){if(state.room?.id===match.id)toast('خادم المباراة: '+(error?.message||'انقطع الاتصال'));}
+ };
+ state.liveMatchStop=await liveWatchMatch(match.id,handlers);
+ await liveRefreshPlayers(match);
+}
+async function safeOnlinePicker(){
+ const cloud=await firebaseCurrent();
+ if(!cloud?.uid)throw Error('لازم تسجل دخول بحساب Firebase حقيقي علشان تلعب أونلاين');
+ const walletStatus=await liveWallet();
+ const funds=walletStatus?.balanceMinor;
+ const stakeValues=[0,500,1000,2500,5000,10000,25000];
+ const options=stakeValues.map(stake=>{
+  const disabled=stake>0&&(!Number.isSafeInteger(funds)||stake>funds);
+  const amount=new Intl.NumberFormat('ar-EG',{maximumFractionDigits:2}).format(stake/100);
+  return `<button class="btn ${disabled?'btn-secondary':'btn-primary'}" data-action="safe-quick" data-stake="${stake}" ${disabled?'disabled':''}>⚡ لعب سريع · ${stake===0?'مجاني':amount+' 🪙'}</button>`;
+ }).join('');
+ openModal('🌐 لعب أونلاين على الخادم',`<p class="muted">المطابقة مع لاعب حقيقي بنفس نوع اللعبة والرهان. المباراة لن تبدأ إلا بعد Ready من الطرفين.</p>
+ <div class="mode-buttons-v8">${options}</div>
+ <hr><button class="btn btn-mint full" data-action="safe-private">🔒 غرفة خاصة ودعوة صديق (مجاني)</button>
+ <p class="muted">${Number.isSafeInteger(funds)?'رصيد الرهان السحابي: '+new Intl.NumberFormat('ar-EG',{maximumFractionDigits:2}).format(funds/100)+' 🪙':'الرصيد المحلي لم يُنقل للخادم بعد؛ اللعب المجاني فقط متاح.'} الرصيد المحلي القديم محفوظ من غير تعديل.</p>`);
+}
+function safeInvitePicker(){
+ const friends=(state.cloud?.friends||[]).slice().sort((a,b)=>Number(b.online)-Number(a.online));
+ if(!friends.length)throw Error('أضف صديقًا حقيقيًا من تبويب الأصدقاء الأول');
+ openModal('👥 اختار صديق للمباراة',`<div class="room-list">${friends.map(f=>`<button class="list-row" data-action="safe-invite-friend" data-uid="${esc(f.uid)}">${avatar(f.user)}<span>${esc(f.user?.name||'صديق')} · ${f.online?'🟢 متصل':'⚪ غير متصل'}</span><span>دعوة ➕</span></button>`).join('')}</div>`);
+}
+
 async function createRoom(kind){const data=await post(kind==='bot'?'/bot':kind==='local'?'/local':kind==='quick'?'/quick':'/rooms',{kind,size:state.boardSize,mode:state.gameMode});enterRoom(data.room);if(data.room.kind==='online')toast('ابعت كود الغرفة لصاحبك وسيب الصفحة مفتوحة');}
 async function joinRoom(id){if(!id||id.length!==6)throw Error('اكتب كود الغرفة المكون من ٦ رموز');const data=await post(`/rooms/${id.toUpperCase()}/join`);enterRoom(data.room);}
 async function joinInvitedRoom(code,button){
