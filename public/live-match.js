@@ -62,7 +62,7 @@ export async function liveWatchMatch(matchId,{onMatch=noop,onChat=noop,onSignal=
  unsubs.push(fs.onSnapshot(fs.query(fs.collection(db,'gameMatches',matchId,'chat'),fs.orderBy('at','asc'),fs.limitToLast(60)),snap=>{
   onChat(snap.docs.map(d=>({id:d.id,...d.data(),at:d.data().at?.toMillis?.()||0})));
  },onError));
- unsubs.push(fs.onSnapshot(fs.query(fs.collection(db,'gameMatches',matchId,'signals'),fs.where('toUid','==',uid),fs.orderBy('at','asc'),fs.limitToLast(60)),snap=>{
+ unsubs.push(fs.onSnapshot(fs.query(fs.collection(db,'gameMatches',matchId,'signals'),fs.where('toUid','==',uid),fs.limit(60)),snap=>{
   for(const change of snap.docChanges())if(change.type==='added')onSignal({id:change.doc.id,...change.doc.data()});
  },onError));
  return ()=>{for(const off of unsubs)try{off();}catch{}};
