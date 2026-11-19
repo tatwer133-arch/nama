@@ -107,3 +107,17 @@ test('Backend checks identity and rejects missing wallets rather than trusting l
  assert.equal(m.data('gameLedger/escrow:'+id),undefined);
  assert.equal(m.data('gameMatches/'+id).status,'waiting');
 });
+
+
+test('zero-stake quick rooms start without importing or creating legacy browser balances',async()=>{
+ const id='ABCDEF';
+ const room=createMatch({id,hostUid:'alice',mode:'seega3',type:'quick',stakeMinor:0});
+ const paired=transition(room,{type:'quick-join',actorUid:'bob',mode:'seega3',stakeMinor:0}).match;
+ const m=firestoreMock({'gameMatches/ABCDEF':paired});
+ await send(m.db,'alice',id,'ready',{ready:true});
+ await send(m.db,'bob',id,'ready',{ready:true});
+ assert.equal(m.data('gameMatches/'+id).status,'playing');
+ assert.equal(m.data('gameLedger/escrow:'+id).amountMinor,0);
+ assert.equal(m.data('gameWallets/alice'),undefined);
+ assert.equal(m.data('gameWallets/bob'),undefined);
+});
