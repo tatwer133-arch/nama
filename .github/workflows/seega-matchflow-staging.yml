@@ -1,0 +1,58 @@
+name: Seega Royale matchflow staging QA (never deploy)
+on:
+  push:
+    branches:
+      - seega-royale-matchflow-staging-20261119
+    paths:
+      - 'server/**'
+      - 'tests/**'
+      - 'qa/**'
+      - 'firestore.rules'
+      - 'firebase.json'
+      - 'package.json'
+      - '.github/workflows/seega-matchflow-staging.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: seega-matchflow-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - name: Syntax check server and original game engine
+        run: |
+          node --check server/functions-entry.mjs
+          node --check server/firestore-backend.mjs
+          node --check server/queue-service.mjs
+          node --check server/ledger-service.mjs
+          node --check public/game-engine.js
+          node --check public/variants.js
+      - name: Run state-machine and durable-store mock tests
+        run: npm run test:match-protocol
+  firestore-rules:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install emulator tooling
+        run: npm install --no-audit --no-fund
+      - name: Test real Firestore rules in isolated emulator
+        run: npm run test:rules
