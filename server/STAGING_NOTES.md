@@ -1,33 +1,54 @@
-# Seega Royale — Gameflow development branch (NOT deployed)
+# Seega Royale — existing repository, isolated matchflow STAGING
 
-This branch is **inside the existing** `tatwer133-arch/nama` repository and is deliberately not connected to the public Vercel production deployment.
+Last edited: 2026-11-19. **NOT DEPLOYED. NEVER DEPLOY TO PRODUCTION WITHOUT THE GATES BELOW.**
 
-## Verified code
+This branch is `seega-royale-matchflow-staging-20261119` in `tatwer133-arch/nama`, not a new game and not the public production release. GitHub's checked-out source predates some manually deployed files on Vercel. **Do not replace the live production bundle from this branch.**
 
-- `server/match-protocol.mjs`: quick queue matching policy, private invitations (first accepted invite claims seat), two-player Ready, host kick before start, free pre-start exit, disconnect grace, moves, timeouts, escrow and settlement intentions.
-- `server/ledger-service.mjs`: authenticated transaction boundary, all-or-nothing debit of both wallets, unique escrow/settlement references, payout and house commission accounting.
-- `server/game-rules-adapter.mjs`: reuses original Egyptian, American, Russian, 3×3 and Chinese engines without rewriting their rules.
-- `tests/*.test.mjs`: 29 tests. Command: `npm run test:match-protocol`.
+## Implemented in this branch (code, NOT live claims)
 
-### Example
+- Authoritative Seega state machine; all seven existing game engines reused.
+- Firebase Admin / Firestore transaction adapter (`server/firestore-backend.mjs`).
+- Atomic quick matching and private rooms with one active match per account and queue lease (`server/queue-service.mjs`).
+- Verified Firebase callable entry points for open/resume/commands, wallet read, room chat, voice signals (`server/functions-entry.mjs`).
+- Unique escrow and settlement ledger keys, 5% default commission and balanced draws. Zero-stake games do **not** need a migrated wallet. Paid matches fail closed until an audited server-side wallet exists.
+- Server turn scheduling via Cloud Tasks and scheduled sweeper; server-only auto actions.
+- Invitation expiry, refusal, host kick, first accepted invite wins, player Ready.
+- Firestore client read rules limited to authorized room members; client changes to balance, ledger, match and queue are denied.
+- New `public/live-match.js` client + a staged live room path in `public/app.js`, reusing the existing UI/board without disabling bot/local/P2P.
+- Consent-based `public/live-voice.js` WebRTC audio handshake using authenticated room signaling, **STUN-only**; TURN must be configured for dependable connectivity across networks.
+- GitHub Actions isolated unit, Firestore Rules emulator, and mobile Chromium QA in `.github/workflows/seega-matchflow-staging.yml`. See each run's exact SHA and job conclusions; never extrapolate an older successful run to later commits.
 
-Two players stake 50.00 non-redeemable game coins each (minor units: 5,000 + 5,000). At 5% commission (500 basis points), the winner's credit is 95.00 and the house fee is 5.00. A draw returns 47.50 to each, with a 5.00 total fee.
+## NOT complete or verified on live infrastructure
 
-## Hard blockers before enabling these features in the actual game
+1. Cloud Functions, task queues and updated rules are **not deployed** to `seega-royal` or a separate staging Firebase project. Cloud Tasks and Cloud Scheduler require appropriate project billing/IAM.
+2. No audited migration of existing **device-local** virtual balances into `gameWallets`. The browser must not decide opening balances; this must be reconciled server-side and recorded idempotently. No live users' wallets were changed.
+3. Match voice has no production TURN service or cross-network QA. STUN-only is experimental; signaling code alone is not end-to-end media verification.
+4. Reconnection can restore a match after refresh, but reliable disconnect/presence-forfeit policy needs server-managed heartbeat or RTDB presence, plus extensive offline tests.
+5. Production/manual deployment files must be reconciled with GitHub before changing shared menus. Do not remove standalone voice rooms until their in-match alternatives pass cross-device tests.
+6. Final home/navigation five-tab redesign is deferred pending production-source reconciliation and visual/mobile QA. The existing visual theme was retained on staging.
+7. Two independently authenticated real Firebase users, two mobile devices, microphone permissions, TURN, wager/draw/forfeit and all seven modes have NOT been verified against a deployed backend.
 
-1. Implement a real, persistent, serializable datastore transaction adapter with a unique constraint on ledger keys. **Never use localStorage, client-side Firebase updates, or in-process memory as the source of truth for balances.**
-2. Verify Firebase ID tokens on the trusted server and authorize match commands, friend relationships, one account per seat, and the authenticated actor identity.
-3. Migrate existing integer coin balances safely to hundredth-coin minor units, or adopt an alternative explicitly approved rounding policy. Do not silently mutate existing wallets.
-4. Implement a persistent, atomically claimed quick-match queue with presence, expiration, cancellation and matchmaking by identical mode and stake.
-5. Add real-time subscriptions, reconnection/resume with authoritative room version, deduplicated commands, room readiness, kick, friend invites, voice (WebRTC + reliable signaling/TURN), and compact in-game chat.
-6. Wire the production UI to the new API only after verifying it retains the current styling and existing player data. The GitHub source branch predates some manually deployed Vercel files; **do not overwrite production from this branch.**
-7. Test 390×844 and other mobile viewport sizes, two independent real accounts on separate devices, microphone permissions, network disconnects, wager refunds, draw commission and all variants.
-8. Remove stand-alone public voice rooms and other UI controls **only after** all required in-game alternatives work.
+## Safe test/deploy sequence
 
-## Production safety
+1. First, compare current **public Vercel assets** with the GitHub branch. Protect production by never force-overwriting those manually deployed files.
+2. Use a **separate staging Firebase project**, with staging Authentication providers, Firestore and Functions, including verified authorization domain and appropriate IAM. Never assume the production `.firebaserc` default is safe for a staging deploy.
+3. Install dependencies from the source; run `npm run test:match-protocol` and `npm run test:rules`; run `npm run test:browser` to check 320/390/1280 px. These tests are not a substitute for real cloud QA.
+4. Deploy only the separate staging project's cloud functions and rules. Connect a staging web preview to those functions; keep all production DNS/Vercel targets unchanged.
+5. Try zero-stake quick with two distinct Firebase identities. Test same-stake matching, different-stake separation, duplicate join, Ready, invite/decline/accept, kick, move validation, timer, automatic actions, text chat and refresh/resume.
+6. Audit and execute a **server-authorized** wallet migration only after reconstructing trusted balances; test insufficient funds, transaction race conditions, double settlement, draw rounding, forfeit and fee conservation. Do not trust coins sent from browsers.
+7. Add authenticated ephemeral TURN credentials and validate microphone consent/mute/hangup on two independently networked devices; test poor network and disconnects.
+8. Once alternatives demonstrably work, unify the five-tab home design, remove redundant public voice rooms and other controls, then finish visual regression against the production reference.
+9. Require green staging CI, real two-account / two-device QA, data-preservation check, and explicit production release decision before merging/deploying.
 
-Do not deploy this branch as production. Vercel production was not changed by this staging work. Backend tests use mock transactional storage and do **not** establish availability or security of any live Firebase/Render server.
+### Important file references
 
-## Intended order of integration
+- `server/match-protocol.mjs` — authorized match transitions.
+- `server/ledger-service.mjs` — escrow/commission/settlement.
+- `server/queue-service.mjs` — server quick/private room claims.
+- `server/firestore-backend.mjs` — Admin Firestore transaction adapter.
+- `server/functions-entry.mjs` — callable/clock/chat/voice server.
+- `public/live-match.js`, `public/live-voice.js`, `public/app.js` — staging UI path.
+- `firestore.rules`, `qa/firestore-rules.mjs` — permission checks.
+- `tests/*`, `.github/workflows/seega-matchflow-staging.yml` — unit/emulator/browser QA.
 
-Homepage/navigation → game/mode selection → stake list → quick queue → invitations/Ready/kick → durable escrow/settlement → game voice/chat → server timer → remove redundant menus → full mobile/two-account QA → release.
+**Do not confuse a GitHub Actions success against emulator data with a running production backend.**
