@@ -18,7 +18,7 @@ import {serverGameRules} from './game-rules-adapter.mjs';
 if(!getApps().length)initializeApp();
 const store=getFirestore(), REGION='europe-west1';
 const opts={region:REGION,timeoutSeconds:30,maxInstances:30,memory:'256MiB'};
-const allowed=new Set(['invite','accept','decline','kick','ready','leave','move','disconnect','reconnect']);
+const allowed=new Set(['invite','accept','decline','kick','ready','leave','move','reconnect']);
 const roomCode=()=>[...randomBytes(6)].map(b=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b%32]).join('');
 const assert=(ok,message)=>{if(!ok)throw new HttpsError('failed-precondition',message)};
 const auth=req=>{
