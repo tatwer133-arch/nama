@@ -1,6 +1,6 @@
 import {variantActions,chineseLayout,GAME_CATALOG,initialVariant} from './variants.js';
 import {initialGame} from './game-engine.js';
-import {liveUid,liveOpenQuick,liveOpenPrivate,liveWallet,liveCommand,liveChat,liveWatchMatch,liveWatchInvitations,liveProfile,liveSignal} from './live-match.js?v=1';
+import {liveUid,liveOpenQuick,liveOpenPrivate,liveResume,liveWallet,liveCommand,liveChat,liveWatchMatch,liveWatchInvitations,liveProfile,liveSignal} from './live-match.js?v=1';
 import {createLiveVoice} from './live-voice.js?v=1';
 import {effect,startMusic,stopMusic,isMusicOn,unlockAudio} from './soundscape.js';
 import {mount3D,reset3D} from './scene3d.js?v=11.4';
@@ -975,7 +975,11 @@ async function authReady(u){
    onNotice:message=>{if(/Firebase|Firestore|permissions|قواعد|الصلاحيات/i.test(message)){state.cloudSetupIssue=message;return;}toast(message);}
   }).catch(e=>{state.cloudSetupIssue='مكالمات الأصدقاء تحتاج قواعد Firestore المحدثة: '+e.message;});
  }
- const match=location.pathname.match(/^\/(room|invite|watch)\/([A-Za-z0-9]{6})$/);const id=match?.[2];if(id){try{if(match[1]==='watch')await watchRoom(id);else await joinRoom(id);}catch(e){toast(e.message);window.history.replaceState({},'','/');view('home');}}else view('home');}
+ const match=location.pathname.match(/^\/(room|invite|watch)\/([A-Za-z0-9]{6})$/);const id=match?.[2];if(id){try{if(match[1]==='watch')await watchRoom(id);else await joinRoom(id);}catch(e){toast(e.message);window.history.replaceState({},'','/');view('home');}}else{view('home');if(state.me?.firebaseUid){
+  liveResume().then(async result=>{
+   if(result?.match&&!state.room&&state.me?.firebaseUid)await enterLiveRoom(result.match);
+  }).catch(e=>console.info('Secure match resume unavailable',e));
+ }}}
 $('#auth-form').addEventListener('submit',async e=>{e.preventDefault();const data=Object.fromEntries(new FormData(e.target));try{unlockAudio();let r;
  if(firebaseReady()){
   const profile=await firebaseEmail(state.authView,data.email,data.password,data.name);
