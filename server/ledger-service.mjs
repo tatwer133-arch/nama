@@ -5,7 +5,7 @@
  * Wallet amounts use integer hundredths of non-redeemable game coins.
  */
 import {transition,payout,requireBackend} from './match-protocol.mjs';
-const CLIENT_ACTIONS=new Set(['quick-join','invite','accept','kick','ready','leave','move']);
+const CLIENT_ACTIONS=new Set(['quick-join','invite','accept','kick','ready','leave','move','disconnect','reconnect']);
 const SYSTEM_ACTIONS=new Set(['disconnect','reconnect','auto-move','disconnect-timeout']);
 const assert=(x,message)=>{if(!x)throw new Error(message)};
 const ledgerId=(type,id)=>type+':'+id;
@@ -39,9 +39,13 @@ async function settle(tx,match,now){
  const plan=payout(match,match.settlement.winner);
  assert(plan.credits.every(x=>Number.isSafeInteger(x.amountMinor)&&x.amountMinor>=0),'Invalid payout amount');
  assert(plan.commissionMinor+plan.credits.reduce((n,x)=>n+x.amountMinor,0)===plan.potMinor,'Non-conserving settlement');
- for(const credit of plan.credits){
-  const current=await getMoney(tx,credit.uid);
-  await tx.putWallet(credit.uid,{...current,balanceMinor:current.balanceMinor+credit.amountMinor});
+ // Firestore forbids transaction reads after the first write. Read every
+ // destination wallet before mutating any of them, including a draw's two.
+ const wallets=await Promise.all(plan.credits.map(async credit=>({credit,current:await getMoney(tx,credit.uid)})));
+ for(const {credit,current} of wallets){
+  const next=current.balanceMinor+credit.amountMinor;
+  assert(Number.isSafeInteger(next),'Wallet integer overflow');
+  await tx.putWallet(credit.uid,{...current,balanceMinor:next});
  }
  await tx.addHouseFee(plan.commissionMinor);
  await tx.putLedger(id,{id,matchId:match.id,type:'settlement',winner:match.settlement.winner,plan,at:now});
@@ -62,12 +66,22 @@ export async function executePlayerCommand(db,{token,matchId,command,engine,now=
  return db.transaction(async tx=>{
   const old=await tx.getMatch(matchId);assert(old,'Room not found');
   if(command.type==='invite')assert(await tx.areFriends(uid,command.friendUid),'Accepted friendship required');
+  // Acquire the private seat within the SAME transaction as accepting.
+  if(command.type==='accept'&&tx.getActive)
+   assert(!await tx.getActive(uid),'You already have an active match');
+  const queue=command.type==='leave'&&old.type==='quick'&&old.status==='waiting'&&!old.players[1]&&tx.getQueue
+   ? await tx.getQueue(old.mode+'_'+old.stakeMinor):null;
   const result=transition(old,{...command,actorUid:uid,fromServer:false},{engine,now});
   let next=result.match;
   for(const event of result.events){
    if(event.kind==='reserve-both-atomically')next=await reserve(tx,next,engine,now);
   }
   for(const event of result.events)if(event.kind==='settle-once')await settle(tx,next,now);
+  if(!result.duplicate&&command.type==='accept'&&tx.putActive)tx.putActive(uid,matchId);
+  if(!result.duplicate&&old.players[1]&&!next.players[1]&&tx.deleteActive)tx.deleteActive(old.players[1].uid);
+  if(['finished','cancelled'].includes(next.status)&&tx.deleteActive)
+   for(const seat of next.players.filter(Boolean))tx.deleteActive(seat.uid);
+  if(queue?.matchId===matchId&&next.status!=='waiting'&&tx.deleteQueue)tx.deleteQueue(old.mode+'_'+old.stakeMinor);
   await tx.putMatch(next);
   return {match:next,duplicate:result.duplicate};
  });
@@ -81,6 +95,8 @@ export async function executeServerCommand(db,{matchId,command,engine,now=Date.n
   const old=await tx.getMatch(matchId);assert(old,'Match not found');
   const result=transition(old,{...command,fromServer:true},{engine,now});
   for(const e of result.events)if(e.kind==='settle-once')await settle(tx,result.match,now);
+  if(['finished','cancelled'].includes(result.match.status)&&tx.deleteActive)
+   for(const seat of result.match.players.filter(Boolean))tx.deleteActive(seat.uid);
   await tx.putMatch(result.match);
   return {match:result.match,duplicate:result.duplicate};
  });
