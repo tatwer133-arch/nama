@@ -56,7 +56,9 @@ async function attemptOpen(op,uid,input){
 function openResult(x){return {...x,serverTime:Date.now()};}
 async function scheduleTurn(match){
  if(!match||!['playing','reconnecting'].includes(match.status)||!Number.isFinite(match.deadline))return;
- const delay=Math.max(1,Math.ceil((match.deadline-Date.now())/1000));
+ const disconnectAt=match.status==='reconnecting'?match.players.filter(p=>p&&!p.connected&&Number.isFinite(p.disconnectedAt)).map(p=>p.disconnectedAt+match.graceMs):[];
+ const target=disconnectAt.length?Math.min(...disconnectAt):match.deadline;
+ const delay=Math.max(1,Math.ceil((target-Date.now())/1000));
  try{
   await getFunctions().taskQueue('locations/'+REGION+'/functions/expireSeegaTurn').enqueue({matchId:match.id,version:match.version},
    {scheduleDelaySeconds:delay});
