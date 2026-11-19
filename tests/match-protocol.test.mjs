@@ -95,3 +95,16 @@ test('no stake execution without durable authenticated backend',()=>{
  assert.throws(()=>requireBackend({}),/ACID backend/);
  assert.equal(requireBackend({transaction(){},verifyIdentity(){},uniqueLedger(){}}),true);
 });
+
+
+test('private invites expire after five minutes; decline, then re-invite resets the clock',()=>{
+ let m=privateRoom();
+ m=apply(m,'invite','alice',{friendUid:'bob'},1000).match;
+ assert.throws(()=>apply(m,'accept','bob',{},301001),/expired/);
+ m=apply(m,'decline','bob',{},2000).match;
+ assert.equal(m.invites[0].status,'rejected');
+ m=apply(m,'invite','alice',{friendUid:'bob'},302000).match;
+ assert.equal(m.invites[0].status,'pending');
+ assert.equal(m.invites[0].createdAt,302000);
+ assert.equal(apply(m,'accept','bob',{},302001).match.players[1].uid,'bob');
+});
