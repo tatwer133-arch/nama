@@ -41,6 +41,7 @@ export function createFirestoreBackend(firestore, {FieldValue, verifyIdentity}){
      async getActive(uid){const snap=await native.get(activeRef(uid));return snap.exists?snap.data():null;},
      putActive(uid,matchId){native.set(activeRef(uid),{matchId});},
      deleteActive(uid){native.delete(activeRef(uid));},
+     putInvitation(matchId,uid,data){native.set(ref('gameInvitations',matchId+'__'+uidRef(uid)),data);},
      async getQueue(key){const snap=await native.get(queueRef(key));return snap.exists?snap.data():null;},
      putQueue(key,data){native.set(queueRef(key),data);},
      deleteQueue(key){native.delete(queueRef(key));}
